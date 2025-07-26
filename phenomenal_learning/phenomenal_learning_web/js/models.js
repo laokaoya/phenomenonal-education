@@ -92,6 +92,7 @@ class LearningNode {
         this.title = data.title || '';
         this.content = data.content || '';
         this.type = data.type || 'exploration';
+        this.mode = data.mode || '解释模式'; // 添加mode属性
         this.insightIds = data.insightIds || [];
         this.createdAt = data.createdAt || new Date().toISOString();
         this.updatedAt = data.updatedAt || new Date().toISOString();

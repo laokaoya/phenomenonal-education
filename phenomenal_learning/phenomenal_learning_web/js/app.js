@@ -388,8 +388,27 @@ class PhenomenalLearningApp {
 
     // 新增：创建新的 Exploration
     createNewExploration() {
-        const question = prompt('请输入新的探索问题：');
+        console.log('createNewExploration函数被调用');
+        console.log('当前journey:', this.currentJourney);
+        console.log('创建新exploration前的计数:', this.currentJourney?.metadata?.explorationCount);
+        
+        // 先增加exploration计数
+        incrementExplorationCount(this.currentJourney);
+        
+        console.log('创建新exploration后的计数:', this.currentJourney?.metadata?.explorationCount);
+        
+        // 获取下一个exploration的角度
+        const nextAngle = getNextExplorationAngle(this.currentJourney);
+        const question = prompt(`请输入新的探索问题（建议角度：${nextAngle}）：`);
         if (!question) return;
+        
+        // 记录已使用的角度
+        if (this.currentJourney && this.currentJourney.metadata) {
+            const explorationCount = this.currentJourney.metadata.explorationCount || 0;
+            if (explorationCount > 1) { // 从第二个exploration开始记录
+                recordUsedAngle(this.currentJourney, nextAngle);
+            }
+        }
         
         let difyAnswer = '';
         // 调用 Dify API 获取回答
@@ -428,70 +447,77 @@ class PhenomenalLearningApp {
 
     // 新增：弹出 exploration 对话/分享弹窗
     showExplorationDialog(node) {
+        console.log('showExplorationDialog被调用，node:', node);
+        console.log('node.mode:', node?.mode);
+        
         // 检查是否已存在弹窗
         let dialog = document.getElementById('exploration-dialog-modal');
         if (!dialog) {
             dialog = document.createElement('div');
             dialog.id = 'exploration-dialog-modal';
             dialog.className = 'modal show';
-            dialog.innerHTML = `
-                <div class="modal-content material-design">
-                    <div class="modal-header material-header">
-                        <div class="header-content">
-                            <div class="header-icon">
-                                <i class="fas fa-lightbulb"></i>
-                            </div>
-                            <div class="header-text">
-                                <h3>探索互动</h3>
-                                <p>与 AI 对话，记录你的思考</p>
-                            </div>
-                        </div>
-                        <button class="modal-close material-close" id="close-exploration-dialog">
-                            <i class="fas fa-times"></i>
-                        </button>
-                    </div>
-                    <div class="modal-body material-body">
-                        <div id="exploration-dialog-history" class="chat-history"></div>
-                        <div id="exploration-dialog-input-section" class="input-section">
-                            <div class="input-container">
-                                <textarea id="exploration-dialog-input" class="material-input" placeholder="输入你的问题..."></textarea>
-                                <div class="input-actions">
-                                    <button class="btn-material primary" id="exploration-dialog-ask">
-                                        <i class="fas fa-question-circle"></i>
-                                        <span>提问</span>
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                        <div id="exploration-dialog-reflection-section" class="input-section" style="display:none;">
-                            <div class="input-container">
-                                <textarea id="exploration-dialog-reflection-input" class="material-input" placeholder="输入你的感悟或反思..."></textarea>
-                                <div class="input-actions">
-                                    <button class="btn-material secondary" id="exploration-dialog-share">
-                                        <i class="fas fa-heart"></i>
-                                        <span>分享感悟</span>
-                                    </button>
-                                    <button class="btn-material reflection" id="exploration-dialog-reflection">
-                                        <i class="fas fa-brain"></i>
-                                        <span>深度反思</span>
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                        <div id="exploration-dialog-explored" class="explored-status" style="display:none;">
-                            <div class="status-content">
-                                <i class="fas fa-check-circle"></i>
-                                <span>已探索</span>
-                            </div>
-                        </div>
-                        <div id="exploration-dialog-status" class="status-message"></div>
-                    </div>
-                </div>
-            `;
             document.body.appendChild(dialog);
-        } else {
-            dialog.classList.add('show');
         }
+        
+        const mode = node.mode || '探索互动';
+        console.log('设置dialog标题为:', mode);
+        
+        dialog.innerHTML = `
+            <div class="modal-content material-design">
+                <div class="modal-header material-header">
+                    <div class="header-content">
+                        <div class="header-icon">
+                            <i class="fas fa-lightbulb"></i>
+                        </div>
+                        <div class="header-text">
+                            <h3>${mode}</h3>
+                            <p>与 AI 对话，记录你的思考</p>
+                        </div>
+                    </div>
+                    <button class="modal-close material-close" id="close-exploration-dialog">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="modal-body material-body">
+                    <div id="exploration-dialog-history" class="chat-history"></div>
+                    <div id="exploration-dialog-input-section" class="input-section">
+                        <div class="input-container">
+                            <textarea id="exploration-dialog-input" class="material-input" placeholder="输入你的问题..."></textarea>
+                            <div class="input-actions">
+                                <button class="btn-material primary" id="exploration-dialog-ask">
+                                    <i class="fas fa-question-circle"></i>
+                                    <span>提问</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="exploration-dialog-reflection-section" class="input-section" style="display:none;">
+                        <div class="input-container">
+                            <textarea id="exploration-dialog-reflection-input" class="material-input" placeholder="输入你的感悟或反思..."></textarea>
+                            <div class="input-actions">
+                                <button class="btn-material secondary" id="exploration-dialog-share">
+                                    <i class="fas fa-heart"></i>
+                                    <span>分享感悟</span>
+                                </button>
+                                <button class="btn-material reflection" id="exploration-dialog-reflection">
+                                    <i class="fas fa-brain"></i>
+                                    <span>深度反思</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="exploration-dialog-explored" class="explored-status" style="display:none;">
+                        <div class="status-content">
+                            <i class="fas fa-check-circle"></i>
+                            <span>已探索</span>
+                        </div>
+                    </div>
+                    <div id="exploration-dialog-status" class="status-message"></div>
+                </div>
+            </div>
+        `;
+        
+        dialog.classList.add('show');
 
         // 为每个节点维护独立的对话状态
         if (!this.nodeDialogStates) {
@@ -537,6 +563,25 @@ class PhenomenalLearningApp {
         if (nodeState.history.length > 0) {
             historyDiv.innerHTML = nodeState.history.join('');
         } else {
+            // 获取当前exploration的角度
+            let explorationAngle = '继续探索当前主题';
+            
+            // 从节点内容中提取角度
+            if (node && node.content) {
+                // 如果节点内容以"Q: "开头，提取角度
+                if (node.content.startsWith('Q: ')) {
+                    explorationAngle = node.content.substring(3); // 去掉"Q: "前缀
+                } else {
+                    // 否则使用getNextExplorationAngle作为后备
+                    explorationAngle = getNextExplorationAngle(this.currentJourney);
+                }
+            } else {
+                // 如果节点内容不存在，使用getNextExplorationAngle作为后备
+                explorationAngle = getNextExplorationAngle(this.currentJourney);
+            }
+            
+            console.log('从节点内容获取的角度:', explorationAngle);
+            
             historyDiv.innerHTML = `
                 <div class="message ai-message">
                     <div class="message-avatar">
@@ -548,7 +593,7 @@ class PhenomenalLearningApp {
                             <span class="message-time">${new Date().toLocaleTimeString()}</span>
                         </div>
                         <div class="message-text">
-                            <strong>Q:</strong> ${node.content.split('\nA:')[0].replace('Q:','').trim()}
+                            <strong>Q:</strong> ${explorationAngle}
                         </div>
                     </div>
                 </div>
@@ -607,12 +652,23 @@ class PhenomenalLearningApp {
             historyDiv.innerHTML += loadingMessage;
             historyDiv.scrollTop = historyDiv.scrollHeight;
             
-            // 调用 Dify
+            // 调用新的Exploration Dify API
             let answer = '';
             try {
-                answer = await window.callDifyWorkflow(input);
+                // 从节点内容中提取角度
+                let angle = '继续探索当前主题';
+                if (node && node.content) {
+                    if (node.content.startsWith('Q: ')) {
+                        angle = node.content.substring(3); // 去掉"Q: "前缀
+                    }
+                }
+                
+                const mode = node.mode || '解释模式';
+                console.log('调用Exploration Dify，参数:', { angle, mode, userInput: input });
+                
+                answer = await window.callDifyExploration(angle, mode, input);
             } catch (err) {
-                answer = 'Dify API 调用失败: ' + err.message;
+                answer = 'Exploration Dify API 调用失败: ' + err.message;
             }
             
             // 移除加载状态，添加 AI 回复
@@ -1485,7 +1541,9 @@ class PhenomenalLearningApp {
             // 显示提示消息
             const nextNodeIndex = this.journeyRenderer.getVisibleNodesCount();
             if (nextNodeIndex <= this.currentJourney.getNodes().length) {
-                this.showMaterialToast(`新的探索已解锁！点击第 ${nextNodeIndex} 个探索开始。`, 'success');
+                // 获取下一个exploration的角度作为提示
+                const nextAngle = getNextExplorationAngle(this.currentJourney);
+                this.showMaterialToast(`新的探索已解锁！建议角度：${nextAngle}`, 'success');
             }
         }
     }
@@ -1765,6 +1823,51 @@ function setupHomeInspiration() {
                     return;
                 }
                 
+                // 调用新的Dify存储用户输入
+                const storeResult = await callDifyStore(word);
+                console.log('用户输入存储结果:', storeResult);
+                
+                // 解析Dify存储结果，提取角度列表、语气列表、难度
+                console.log('开始解析Dify存储结果，原始结果:', storeResult);
+                try {
+                    const parsedResult = JSON.parse(storeResult);
+                    console.log('解析后的JSON对象:', parsedResult);
+                    
+                    if (parsedResult.angles && Array.isArray(parsedResult.angles)) {
+                        window.availableAngles = parsedResult.angles;
+                        console.log('解析出的角度列表:', window.availableAngles);
+                    } else {
+                        console.warn('未找到angles字段或不是数组:', parsedResult.angles);
+                        window.availableAngles = [];
+                    }
+                    
+                    if (parsedResult.styles && Array.isArray(parsedResult.styles)) {
+                        window.availableStyles = parsedResult.styles;
+                        console.log('解析出的语气列表:', window.availableStyles);
+                    } else {
+                        console.warn('未找到styles字段或不是数组:', parsedResult.styles);
+                        window.availableStyles = [];
+                    }
+                    
+                    if (parsedResult.difficulty) {
+                        window.currentDifficulty = parsedResult.difficulty;
+                        console.log('解析出的难度:', window.currentDifficulty);
+                    } else {
+                        console.warn('未找到difficulty字段:', parsedResult.difficulty);
+                        window.currentDifficulty = '中等';
+                    }
+                } catch (parseError) {
+                    console.error('解析Dify存储结果失败:', parseError);
+                    console.error('原始结果内容:', storeResult);
+                    // 如果解析失败，设置默认值
+                    window.availableAngles = [];
+                    window.availableStyles = [];
+                    window.currentDifficulty = '中等';
+                }
+                
+                // 保存存储结果到全局变量，供后续使用
+                window.lastDifyStoreResult = storeResult;
+                
                 // 获取Dify学习起点选项
                 const options = await callDifyGetOptions(word);
                 
@@ -1841,6 +1944,14 @@ function showJourneyStartModal(options = ['探索基础概念', '深入研究应
             btn.classList.add('selected');
             
             // 创建新的journey，保存Home页输入和选项
+            console.log('创建journey时的参数:', { currentWord, options, index, selectedOption: options[index] });
+            console.log('全局变量状态:', {
+                lastDifyStoreResult: window.lastDifyStoreResult,
+                availableAngles: window.availableAngles,
+                availableStyles: window.availableStyles,
+                currentDifficulty: window.currentDifficulty
+            });
+            
             if (app && currentWord && options[index]) {
                 try {
                     const journey = await journeyService.createJourney({
@@ -1852,9 +1963,17 @@ function showJourneyStartModal(options = ['探索基础概念', '深入研究应
                         metadata: {
                             homeWord: currentWord,
                             homeOptions: options,
-                            selectedOption: options[index]
+                            selectedOption: options[index],
+                            difyStoreResult: window.lastDifyStoreResult || '',
+                            availableAngles: window.availableAngles || [],
+                            availableStyles: window.availableStyles || [],
+                            currentDifficulty: window.currentDifficulty || '中等',
+                            explorationCount: 0 // 记录exploration次数
                         }
                     });
+                    
+                    console.log('创建的journey metadata:', journey.metadata);
+                    console.log('保存的availableAngles:', journey.metadata.availableAngles);
                     
                     // 设置为当前journey
                     app.currentJourney = journey;
@@ -2210,13 +2329,96 @@ function renderWordCloudWithData(data) {
 function showForbiddenModal() {
     const modal = document.getElementById('forbidden-modal');
     if (!modal) return;
+    
     modal.classList.add('show');
-    const closeBtn = modal.querySelector('.forbidden-close-btn');
-    if (closeBtn) {
-        closeBtn.onclick = () => modal.classList.remove('show');
-    }
+    
+    // 点击遮罩关闭
     const mask = modal.querySelector('.modal-mask');
     if (mask) {
         mask.onclick = () => modal.classList.remove('show');
+    }
+}
+
+// 获取下一个exploration的角度
+function getNextExplorationAngle(journey) {
+    console.log('getNextExplorationAngle被调用，journey:', journey);
+    
+    if (!journey || !journey.metadata) {
+        console.warn('journey或metadata不存在');
+        return '继续探索当前主题';
+    }
+    
+    const metadata = journey.metadata;
+    console.log('journey metadata:', metadata);
+    
+    const explorationCount = metadata.explorationCount || 0;
+    const availableAngles = metadata.availableAngles || [];
+    const selectedOption = metadata.selectedOption || '';
+    const usedAngles = metadata.usedAngles || [];
+    
+    console.log('explorationCount:', explorationCount);
+    console.log('availableAngles:', availableAngles);
+    console.log('selectedOption:', selectedOption);
+    console.log('usedAngles:', usedAngles);
+    
+    // 第一次exploration使用用户选择的选项
+    if (explorationCount === 0) {
+        console.log('第一次exploration，使用selectedOption:', selectedOption);
+        return selectedOption;
+    }
+    
+    // 后续exploration从角度列表中选择未使用的角度
+    if (availableAngles.length > 0) {
+        // 过滤出未使用的角度
+        const unusedAngles = availableAngles.filter(angle => !usedAngles.includes(angle));
+        console.log('未使用的角度:', unusedAngles);
+        
+        if (unusedAngles.length > 0) {
+            // 随机选择一个未使用的角度
+            const randomIndex = Math.floor(Math.random() * unusedAngles.length);
+            const selectedAngle = unusedAngles[randomIndex];
+            console.log('选择的未使用角度:', selectedAngle);
+            return selectedAngle;
+        } else {
+            // 如果所有角度都用过了，重新开始
+            console.log('所有角度都已使用，重新开始');
+            metadata.usedAngles = [];
+            journey.save();
+            const randomIndex = Math.floor(Math.random() * availableAngles.length);
+            return availableAngles[randomIndex];
+        }
+    }
+    
+    // 如果没有可用角度，返回默认值
+    console.warn('没有可用角度，返回默认值');
+    return '继续探索当前主题';
+}
+
+// 更新journey的exploration计数
+function incrementExplorationCount(journey) {
+    console.log('incrementExplorationCount被调用，journey:', journey);
+    if (journey && journey.metadata) {
+        const oldCount = journey.metadata.explorationCount || 0;
+        journey.metadata.explorationCount = oldCount + 1;
+        console.log('explorationCount从', oldCount, '增加到', journey.metadata.explorationCount);
+        journey.save();
+        console.log('journey已保存');
+    } else {
+        console.warn('journey或metadata不存在，无法增加计数');
+    }
+}
+
+// 记录已使用的角度
+function recordUsedAngle(journey, angle) {
+    if (journey && journey.metadata && angle) {
+        if (!journey.metadata.usedAngles) {
+            journey.metadata.usedAngles = [];
+        }
+        if (!journey.metadata.usedAngles.includes(angle)) {
+            journey.metadata.usedAngles.push(angle);
+            console.log('记录已使用的角度:', angle);
+            console.log('已使用的角度列表:', journey.metadata.usedAngles);
+            journey.save();
+        }
     }
 }

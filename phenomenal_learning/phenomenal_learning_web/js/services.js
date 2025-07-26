@@ -130,7 +130,8 @@ class JourneyService {
             coreQuestion: data.coreQuestion,
             description: data.description,
             tags: data.tags || [],
-            userId: data.userId
+            userId: data.userId,
+            metadata: data.metadata || {}
         });
 
         journey.save();
@@ -143,22 +144,45 @@ class JourneyService {
 
     async generateInitialNodes(journey) {
         try {
-            const questions = await this.llmService.generateQuestions(journey.coreQuestion);
+            // 获取journey的metadata中的角度信息
+            const metadata = journey.metadata || {};
+            const availableAngles = metadata.availableAngles || [];
+            const selectedOption = metadata.selectedOption || '';
             
-            // Create initial exploration nodes based on generated questions
-            questions.questions.forEach((question, index) => {
-                const node = new LearningNode({
-                    journeyId: journey.id,
-                    title: `Exploration ${index + 1}`,
-                    content: question,
-                    type: 'exploration',
-                    position: {
-                        x: 200 + (index % 3) * 200,
-                        y: 150 + Math.floor(index / 3) * 150
+            console.log('generateInitialNodes - availableAngles:', availableAngles);
+            console.log('generateInitialNodes - selectedOption:', selectedOption);
+            
+            // 创建初始exploration节点，每个使用不同的角度
+            const anglesToUse = [selectedOption, ...availableAngles.slice(0, 2)]; // 使用selectedOption + 前2个availableAngles
+            
+            anglesToUse.forEach((angle, index) => {
+                if (angle) {
+                    // 随机生成mode
+                    const random = Math.random();
+                    let mode;
+                    if (random < 0.7) {
+                        mode = '解释模式';
+                    } else if (random < 0.9) {
+                        mode = '提问模式';
+                    } else {
+                        mode = '游戏模式';
                     }
-                });
-                
-                journey.addNode(node);
+                    
+                    const node = new LearningNode({
+                        journeyId: journey.id,
+                        title: `Exploration ${index + 1}`,
+                        content: `Q: ${angle}`,
+                        type: 'exploration',
+                        mode: mode, // 添加mode属性
+                        position: {
+                            x: 200 + (index % 3) * 200,
+                            y: 150 + Math.floor(index / 3) * 150
+                        }
+                    });
+                    
+                    journey.addNode(node);
+                    console.log(`创建exploration节点 ${index + 1}，使用角度: ${angle}，模式: ${mode}`);
+                }
             });
 
             return true;
@@ -407,7 +431,7 @@ class SessionService {
 }
 
 // 通用 Dify API 调用工具
-async function callDifyApi({ query, apiKey }) {
+async function callDifyApi({ query, apiKey, inputs = {} }) {
     const apiUrl = 'http://dify.myia.fun/v1/chat-messages';
     try {
         const response = await fetch(apiUrl, {
@@ -418,7 +442,7 @@ async function callDifyApi({ query, apiKey }) {
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-                inputs: {},
+                inputs: inputs,
                 query: query,
                 response_mode: 'blocking',
                 conversation_id: '',
@@ -513,6 +537,67 @@ async function callDifyCheck(word) {
     }
 }
 
+// 存储用户输入内容到Dify
+async function callDifyStore(word) {
+    const apiKey = 'app-SCmEMYmTLvhOoXCkOt4ff9DN';
+    const query = `用户输入了词汇"${word}"，请分析并存储这个学习兴趣点`;
+    try {
+        const data = await callDifyApi({ query, apiKey });
+        let result = '';
+        if (data.answer) {
+            result = data.answer;
+        } else if (data.message) {
+            result = data.message;
+        } else if (data.data && data.data.answer) {
+            result = data.data.answer;
+        } else {
+            console.warn('未知的响应格式:', data);
+            return '存储失败';
+        }
+        console.log('Dify存储结果:', result);
+        return result;
+    } catch (error) {
+        console.error('Dify存储调用失败:', error);
+        return '存储失败';
+    }
+}
+
+// Exploration聊天专用的Dify调用
+async function callDifyExploration(angle, mode, userInput = '1') {
+    const apiKey = 'app-fJXMTR0YNr9GCgsGPbiNCZpm';
+    
+    // 构建输入参数
+    const inputs = {
+        angle: angle,
+        mode: mode,
+        user_input: userInput
+    };
+    
+    try {
+        const data = await callDifyApi({ 
+            query: userInput, 
+            apiKey,
+            inputs: inputs
+        });
+        let result = '';
+        if (data.answer) {
+            result = data.answer;
+        } else if (data.message) {
+            result = data.message;
+        } else if (data.data && data.data.answer) {
+            result = data.data.answer;
+        } else {
+            console.warn('未知的响应格式:', data);
+            return 'Exploration Dify调用失败';
+        }
+        console.log('Exploration Dify结果:', result);
+        return result;
+    } catch (error) {
+        console.error('Exploration Dify调用失败:', error);
+        return 'Exploration Dify调用失败';
+    }
+}
+
 // Create global service instances
 window.llmService = new LLMService();
 window.journeyService = new JourneyService();
@@ -521,3 +606,5 @@ window.sessionService = new SessionService();
 window.callDifyWorkflow = callDifyWorkflow;
 window.callDifyCheck = callDifyCheck;
 window.callDifyGetOptions = callDifyGetOptions;
+window.callDifyStore = callDifyStore;
+window.callDifyExploration = callDifyExploration;
