@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dify API 测试</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        button {
+            padding: 10px 20px;
+            margin: 5px;
+            cursor: pointer;
+        }
+        textarea {
+            width: 100%;
+            height: 100px;
+            margin: 10px 0;
+        }
+        .result {
+            background: #f5f5f5;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+            white-space: pre-wrap;
+        }
+        .error {
+            background: #ffebee;
+            color: #c62828;
+        }
+        .success {
+            background: #e8f5e8;
+            color: #2e7d32;
+        }
+    </style>
+</head>
+<body>
+    <h1>Dify API 连接测试</h1>
+    
+    <div class="test-section">
+        <h3>测试 1: 基础连接测试</h3>
+        <button onclick="testBasicConnection()">测试基础连接</button>
+        <div id="basic-result" class="result"></div>
+    </div>
+
+    <div class="test-section">
+        <h3>测试 2: Chat Messages API</h3>
+        <textarea id="test-question" placeholder="输入测试问题...">你好，请介绍一下自己</textarea>
+        <button onclick="testChatMessages()">测试 Chat Messages API</button>
+        <div id="chat-result" class="result"></div>
+    </div>
+
+    <div class="test-section">
+        <h3>测试 3: Workflow API</h3>
+        <textarea id="workflow-question" placeholder="输入测试问题...">什么是机器学习？</textarea>
+        <button onclick="testWorkflow()">测试 Workflow API</button>
+        <div id="workflow-result" class="result"></div>
+    </div>
+
+    <div class="test-section">
+        <h3>测试 4: 不同参数格式</h3>
+        <button onclick="testDifferentFormats()">测试不同参数格式</button>
+        <div id="format-result" class="result"></div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://dify.myia.fun';
+        const API_KEY = 'app-SCmEMYmTLvhOoXCkOt4ff9DN';
+
+        function logResult(elementId, message, isError = false) {
+            const element = document.getElementById(elementId);
+            element.textContent = message;
+            element.className = `result ${isError ? 'error' : 'success'}`;
+        }
+
+        async function testBasicConnection() {
+            try {
+                logResult('basic-result', '正在测试基础连接...');
+                
+                const response = await fetch(`${API_BASE}/v1/chat-messages`, {
+                    method: 'OPTIONS'
+                });
+                
+                logResult('basic-result', `连接成功！状态码: ${response.status}\n响应头: ${JSON.stringify(Object.fromEntries(response.headers.entries()), null, 2)}`);
+            } catch (error) {
+                logResult('basic-result', `连接失败: ${error.message}`, true);
+            }
+        }
+
+        async function testChatMessages() {
+            try {
+                const question = document.getElementById('test-question').value;
+                logResult('chat-result', '正在测试 Chat Messages API...');
+                
+                const response = await fetch(`${API_BASE}/v1/chat-messages`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${API_KEY}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        query: question,
+                        inputs: {}
+                    })
+                });
+
+                logResult('chat-result', `响应状态: ${response.status}\n响应头: ${JSON.stringify(Object.fromEntries(response.headers.entries()), null, 2)}`);
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    logResult('chat-result', `成功！响应数据:\n${JSON.stringify(data, null, 2)}`);
+                } else {
+                    const errorText = await response.text();
+                    logResult('chat-result', `错误响应:\n${errorText}`, true);
+                }
+            } catch (error) {
+                logResult('chat-result', `请求失败: ${error.message}`, true);
+            }
+        }
+
+        async function testWorkflow() {
+            try {
+                const question = document.getElementById('workflow-question').value;
+                logResult('workflow-result', '正在测试 Workflow API...');
+                
+                const response = await fetch(`${API_BASE}/v1/workflows/test/invoke`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${API_KEY}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        inputs: {
+                            question: question
+                        }
+                    })
+                });
+
+                logResult('workflow-result', `响应状态: ${response.status}`);
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    logResult('workflow-result', `成功！响应数据:\n${JSON.stringify(data, null, 2)}`);
+                } else {
+                    const errorText = await response.text();
+                    logResult('workflow-result', `错误响应:\n${errorText}`, true);
+                }
+            } catch (error) {
+                logResult('workflow-result', `请求失败: ${error.message}`, true);
+            }
+        }
+
+        async function testDifferentFormats() {
+            const formats = [
+                { name: '格式1: query + inputs', body: { query: '测试问题', inputs: {} } },
+                { name: '格式2: 只有 query', body: { query: '测试问题' } },
+                { name: '格式3: inputs.question', body: { inputs: { question: '测试问题' } } },
+                { name: '格式4: 只有 inputs', body: { inputs: { question: '测试问题' } } }
+            ];
+
+            let results = '测试不同参数格式:\n\n';
+            
+            for (const format of formats) {
+                try {
+                    const response = await fetch(`${API_BASE}/v1/chat-messages`, {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${API_KEY}`,
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(format.body)
+                    });
+
+                    results += `${format.name}: ${response.status} ${response.ok ? '✓' : '✗'}\n`;
+                    
+                    if (response.ok) {
+                        const data = await response.json();
+                        results += `  响应: ${JSON.stringify(data).substring(0, 100)}...\n`;
+                    } else {
+                        const errorText = await response.text();
+                        results += `  错误: ${errorText.substring(0, 100)}...\n`;
+                    }
+                } catch (error) {
+                    results += `${format.name}: 网络错误 - ${error.message}\n`;
+                }
+                results += '\n';
+            }
+            
+            logResult('format-result', results);
+        }
+    </script>
+</body>
+</html> 
