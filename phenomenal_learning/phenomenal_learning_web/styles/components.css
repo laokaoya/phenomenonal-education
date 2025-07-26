@@ -726,15 +726,148 @@
 }
 
 .btn-material.outline {
-    background: transparent;
-    color: #667eea;
-    border: 2px solid #667eea;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: 2px solid transparent;
+    background-clip: padding-box;
+    position: relative;
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+    animation: reflectionGlow 2s ease-in-out infinite alternate;
+}
+
+.btn-material.outline::before {
+    content: '';
+    position: absolute;
+    top: -2px;
+    left: -2px;
+    right: -2px;
+    bottom: -2px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 24px;
+    z-index: -1;
+    opacity: 0;
+    transition: opacity 0.3s ease;
 }
 
 .btn-material.outline:hover {
-    background: #667eea;
+    background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
     color: white;
-    transform: translateY(-2px);
+    transform: translateY(-2px) scale(1.05);
+    box-shadow: 0 8px 20px rgba(102, 126, 234, 0.5);
+}
+
+.btn-material.outline:hover::before {
+    opacity: 1;
+}
+
+/* 反思按钮特殊样式 */
+.btn-material.reflection {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+    color: white;
+    border: none;
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+    position: relative;
+    overflow: hidden;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.btn-material.reflection::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(135deg, #f093fb 0%, #764ba2 50%, #667eea 100%);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.btn-material.reflection::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+    transition: left 0.6s ease;
+}
+
+.btn-material.reflection:hover {
+    transform: translateY(-3px) scale(1.05);
+    box-shadow: 0 8px 25px rgba(102, 126, 234, 0.6);
+}
+
+.btn-material.reflection:hover::before {
+    opacity: 1;
+}
+
+.btn-material.reflection:hover::after {
+    left: 100%;
+}
+
+.btn-material.reflection i {
+    animation: reflectionPulse 2s ease-in-out infinite;
+    margin-right: 6px;
+}
+
+.btn-material.reflection span {
+    position: relative;
+    z-index: 1;
+    font-weight: 600;
+}
+
+.btn-material.reflection:active {
+    transform: translateY(-1px) scale(0.98);
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.4);
+}
+
+/* 反思按钮焦点状态 */
+.btn-material.reflection:focus {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.3), 0 4px 15px rgba(102, 126, 234, 0.4);
+}
+
+/* 反思按钮动画 */
+@keyframes reflectionGlow {
+    0% {
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+    }
+    100% {
+        box-shadow: 0 4px 20px rgba(102, 126, 234, 0.6);
+    }
+}
+
+@keyframes reflectionPulse {
+    0%, 100% {
+        transform: scale(1) rotate(0deg);
+    }
+    25% {
+        transform: scale(1.05) rotate(2deg);
+    }
+    50% {
+        transform: scale(1.1) rotate(0deg);
+    }
+    75% {
+        transform: scale(1.05) rotate(-2deg);
+    }
+}
+
+/* 反思按钮加载动画 */
+.btn-material.reflection.loading {
+    animation: reflectionLoading 1.5s ease-in-out infinite;
+}
+
+@keyframes reflectionLoading {
+    0%, 100% {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+    }
+    50% {
+        background: linear-gradient(135deg, #f093fb 0%, #667eea 50%, #764ba2 100%);
+    }
 }
 
 /* 已探索状态样式 */

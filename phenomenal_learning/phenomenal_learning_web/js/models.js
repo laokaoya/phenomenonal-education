@@ -3,7 +3,7 @@
 class User {
     constructor(data = {}) {
         this.id = data.id || storage.generateId();
-        this.name = data.name || 'Learning Explorer';
+        this.name = data.name || this.generateDefaultName();
         this.email = data.email || 'explorer@learning.com';
         this.avatarUrl = data.avatarUrl || null;
         this.createdAt = data.createdAt || new Date().toISOString();
@@ -13,6 +13,13 @@ class User {
             learningStyles: {},
             topicInterests: []
         };
+        this.profile = data.profile || {};
+    }
+
+    generateDefaultName() {
+        // 生成6位随机编码
+        const code = Math.random().toString(36).substring(2, 8).toUpperCase();
+        return `游客${code}`;
     }
 
     save() {

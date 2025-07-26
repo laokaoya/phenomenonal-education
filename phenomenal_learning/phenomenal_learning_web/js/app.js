@@ -66,6 +66,32 @@ class PhenomenalLearningApp {
             });
         }
 
+        // Edit profile form
+        const editProfileForm = document.getElementById('edit-profile-form');
+        if (editProfileForm) {
+            editProfileForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                this.saveProfile();
+            });
+        }
+
+        // Edit profile button
+        const editProfileBtn = document.getElementById('edit-profile-btn');
+        if (editProfileBtn) {
+            editProfileBtn.addEventListener('click', () => {
+                this.showEditProfileModal();
+            });
+        }
+
+        // Avatar upload functionality
+        this.setupAvatarUpload();
+        
+        // Avatar delete functionality
+        this.setupAvatarDelete();
+        
+        // Email edit functionality
+        this.setupEmailEdit();
+
         // Tab switching in node editor
         const tabBtns = document.querySelectorAll('.tab-btn');
         tabBtns.forEach(btn => {
@@ -298,12 +324,20 @@ class PhenomenalLearningApp {
         }
         
         if (currentJourneyEl) {
+            // 获取Home页输入和选项（假设保存在currentJourney.metadata.homeWord和homeOptions）
+            const homeWord = this.currentJourney.metadata?.homeWord || this.currentJourney.title;
+            const homeOptions = this.currentJourney.metadata?.homeOptions || [];
+            let optionsHtml = '';
+            if (Array.isArray(homeOptions) && homeOptions.length > 0) {
+                optionsHtml = `<div class="journey-home-options">${homeOptions.map(opt => `<span class='home-option-badge'>${opt}</span>`).join('')}</div>`;
+            }
             currentJourneyEl.innerHTML = `
-                <h3>${this.currentJourney.title}</h3>
-                <p><strong>Core Question:</strong> ${this.currentJourney.coreQuestion}</p>
-                <p>${this.currentJourney.description}</p>
-                <div class="journey-tags">
-                    ${this.currentJourney.tags.map(tag => `<span class="tag">${tag}</span>`).join('')}
+                <div class="journey-home-header">
+                  <div class="home-word-title">${homeWord}</div>
+                  ${optionsHtml}
+                </div>
+                <div class="journey-meta">
+                  <span class="meta-label">当前探索：</span>${this.currentJourney.coreQuestion}
                 </div>
             `;
         }
@@ -325,7 +359,7 @@ class PhenomenalLearningApp {
                     card.innerHTML = `
                         <h5>${node.title}</h5>
                         <p>${node.content.substring(0, 100)}${node.content.length > 100 ? '...' : ''}</p>
-                        <span class="node-type-badge">${node.type}</span>
+                        <span class="node-type-badge">start</span>
                         <div class="node-index">${i + 1}</div>
                     `;
                     card.addEventListener('click', () => {
@@ -347,12 +381,7 @@ class PhenomenalLearningApp {
                     journeyNodesEl.appendChild(continuePrompt);
                 }
                 
-                // 添加创建新 Exploration 按钮
-                const newExplorationBtn = document.createElement('button');
-                newExplorationBtn.className = 'btn btn-primary w-100 mt-3';
-                newExplorationBtn.innerHTML = '<i class="fas fa-plus"></i> 创建新 Exploration';
-                newExplorationBtn.onclick = () => this.createNewExploration();
-                journeyNodesEl.appendChild(newExplorationBtn);
+                // 删除创建新 Exploration 按钮
             }
         }
     }
@@ -425,19 +454,26 @@ class PhenomenalLearningApp {
                         <div id="exploration-dialog-history" class="chat-history"></div>
                         <div id="exploration-dialog-input-section" class="input-section">
                             <div class="input-container">
-                                <textarea id="exploration-dialog-input" class="material-input" placeholder="输入你的问题或感悟..."></textarea>
+                                <textarea id="exploration-dialog-input" class="material-input" placeholder="输入你的问题..."></textarea>
                                 <div class="input-actions">
                                     <button class="btn-material primary" id="exploration-dialog-ask">
                                         <i class="fas fa-question-circle"></i>
                                         <span>提问</span>
                                     </button>
+                                </div>
+                            </div>
+                        </div>
+                        <div id="exploration-dialog-reflection-section" class="input-section" style="display:none;">
+                            <div class="input-container">
+                                <textarea id="exploration-dialog-reflection-input" class="material-input" placeholder="输入你的感悟或反思..."></textarea>
+                                <div class="input-actions">
                                     <button class="btn-material secondary" id="exploration-dialog-share">
                                         <i class="fas fa-heart"></i>
                                         <span>分享感悟</span>
                                     </button>
-                                    <button class="btn-material outline" id="exploration-dialog-reflection">
-                                        <i class="fas fa-mirror"></i>
-                                        <span>反思</span>
+                                    <button class="btn-material reflection" id="exploration-dialog-reflection">
+                                        <i class="fas fa-brain"></i>
+                                        <span>深度反思</span>
                                     </button>
                                 </div>
                             </div>
@@ -476,17 +512,20 @@ class PhenomenalLearningApp {
         const statusDiv = document.getElementById('exploration-dialog-status');
         const askBtn = document.getElementById('exploration-dialog-ask');
         const inputSection = document.getElementById('exploration-dialog-input-section');
+        const reflectionSection = document.getElementById('exploration-dialog-reflection-section');
         const exploredDiv = document.getElementById('exploration-dialog-explored');
         
         // 根据节点状态设置界面
         if (nodeState.hasAskedQuestion) {
-            // 如果已经提问过，显示已探索状态
+            // 如果已经提问过，显示反思界面
             inputSection.style.display = 'none';
+            reflectionSection.style.display = 'block';
             exploredDiv.style.display = 'flex';
             statusDiv.innerHTML = '<span class="success-text">✓ 探索完成，可以继续反思</span>';
         } else {
-            // 如果还没提问，显示输入界面
+            // 如果还没提问，只显示提问界面
             inputSection.style.display = 'block';
+            reflectionSection.style.display = 'none';
             exploredDiv.style.display = 'none';
             statusDiv.innerHTML = '';
         }
@@ -510,20 +549,6 @@ class PhenomenalLearningApp {
                         </div>
                         <div class="message-text">
                             <strong>Q:</strong> ${node.content.split('\nA:')[0].replace('Q:','').trim()}
-                        </div>
-                    </div>
-                </div>
-                <div class="message ai-message">
-                    <div class="message-avatar">
-                        <i class="fas fa-robot"></i>
-                    </div>
-                    <div class="message-content">
-                        <div class="message-header">
-                            <span class="message-author">AI 助手</span>
-                            <span class="message-time">${new Date().toLocaleTimeString()}</span>
-                        </div>
-                        <div class="message-text">
-                            <strong>A:</strong> ${node.content.split('\nA:')[1] ? node.content.split('\nA:')[1].trim() : ''}
                         </div>
                     </div>
                 </div>
@@ -614,9 +639,10 @@ class PhenomenalLearningApp {
             nodeState.history.push(aiMessage);
             historyDiv.scrollTop = historyDiv.scrollHeight;
             
-            // 标记已提问，隐藏输入框，显示"已探索"
+            // 标记已提问，切换到反思界面
             nodeState.hasAskedQuestion = true;
             inputSection.style.display = 'none';
+            reflectionSection.style.display = 'block';
             exploredDiv.style.display = 'flex';
             statusDiv.innerHTML = '<span class="success-text">✓ 探索完成，可以继续反思</span>';
             
@@ -628,7 +654,7 @@ class PhenomenalLearningApp {
         
         // 分享感悟按钮 - 无限制
         document.getElementById('exploration-dialog-share').onclick = () => {
-            const input = document.getElementById('exploration-dialog-input').value.trim();
+            const input = document.getElementById('exploration-dialog-reflection-input').value.trim();
             if (!input) return;
             
             const shareMessage = `
@@ -649,7 +675,7 @@ class PhenomenalLearningApp {
             `;
             historyDiv.innerHTML += shareMessage;
             nodeState.history.push(shareMessage);
-            document.getElementById('exploration-dialog-input').value = '';
+            document.getElementById('exploration-dialog-reflection-input').value = '';
             historyDiv.scrollTop = historyDiv.scrollHeight;
         };
         
@@ -831,24 +857,411 @@ class PhenomenalLearningApp {
         });
     }
 
+    setupAvatarUpload() {
+        const avatarEditBtn = document.getElementById('avatar-edit-btn');
+        const avatarUpload = document.getElementById('avatar-upload');
+        
+        if (avatarEditBtn && avatarUpload) {
+            avatarEditBtn.addEventListener('click', () => {
+                avatarUpload.click();
+            });
+            
+            avatarUpload.addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    this.handleAvatarUpload(file);
+                }
+            });
+        }
+    }
+
+    setupAvatarDelete() {
+        const avatarDeleteBtn = document.getElementById('avatar-delete-btn');
+        
+        if (avatarDeleteBtn) {
+            avatarDeleteBtn.addEventListener('click', () => {
+                if (confirm('确定要删除当前头像吗？')) {
+                    this.deleteAvatar();
+                }
+            });
+        }
+    }
+
+    setupEmailEdit() {
+        const emailEditBtn = document.getElementById('email-edit-btn');
+        const emailSpan = document.getElementById('profile-email');
+        
+        if (emailEditBtn && emailSpan) {
+            emailEditBtn.addEventListener('click', () => {
+                this.showEmailEditInput(emailSpan);
+            });
+        }
+    }
+
+    showEmailEditInput(emailSpan) {
+        const currentEmail = emailSpan.textContent;
+        const input = document.createElement('input');
+        input.type = 'email';
+        input.value = currentEmail;
+        input.className = 'email-edit-input';
+        input.style.cssText = `
+            border: 2px solid #667eea;
+            border-radius: 4px;
+            padding: 4px 8px;
+            font-size: 14px;
+            outline: none;
+            background: white;
+        `;
+        
+        // 替换span为input
+        emailSpan.style.display = 'none';
+        emailSpan.parentNode.insertBefore(input, emailSpan);
+        input.focus();
+        input.select();
+        
+        // 处理保存
+        const saveEmail = () => {
+            const newEmail = input.value.trim();
+            if (newEmail && newEmail !== currentEmail) {
+                if (this.validateEmail(newEmail)) {
+                    this.currentUser.email = newEmail;
+                    this.currentUser.save();
+                    emailSpan.textContent = newEmail;
+                    this.showMaterialToast('邮箱已更新', 'success');
+                } else {
+                    this.showMaterialToast('请输入有效的邮箱地址', 'warning');
+                    input.focus();
+                    return;
+                }
+            }
+            emailSpan.style.display = 'inline';
+            input.remove();
+        };
+        
+        // 处理取消
+        const cancelEdit = () => {
+            emailSpan.style.display = 'inline';
+            input.remove();
+        };
+        
+        // 事件监听
+        input.addEventListener('blur', saveEmail);
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                saveEmail();
+            } else if (e.key === 'Escape') {
+                cancelEdit();
+            }
+        });
+    }
+
+    validateEmail(email) {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        return emailRegex.test(email);
+    }
+
+    handleAvatarUpload(file) {
+        // 验证文件类型
+        if (!file.type.startsWith('image/')) {
+            this.showMaterialToast('请选择图片文件', 'warning');
+            return;
+        }
+        
+        // 验证文件大小（限制为5MB）
+        if (file.size > 5 * 1024 * 1024) {
+            this.showMaterialToast('图片大小不能超过5MB', 'warning');
+            return;
+        }
+        
+        // 显示加载状态
+        const avatarContainer = document.querySelector('.profile-avatar');
+        if (avatarContainer) {
+            avatarContainer.classList.add('uploading');
+        }
+        
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const img = new Image();
+            img.onload = () => {
+                try {
+                    // 创建canvas来压缩图片
+                    const canvas = document.createElement('canvas');
+                    const ctx = canvas.getContext('2d');
+                    
+                    // 设置canvas尺寸（200x200像素）
+                    const size = 200;
+                    canvas.width = size;
+                    canvas.height = size;
+                    
+                    // 计算裁剪区域（保持正方形）
+                    const minDimension = Math.min(img.width, img.height);
+                    const sourceX = (img.width - minDimension) / 2;
+                    const sourceY = (img.height - minDimension) / 2;
+                    
+                    // 绘制压缩后的图片
+                    ctx.drawImage(img, sourceX, sourceY, minDimension, minDimension, 0, 0, size, size);
+                    
+                    // 转换为base64
+                    const compressedImageData = canvas.toDataURL('image/jpeg', 0.8);
+                    
+                    // 更新头像显示
+                    this.updateAvatarDisplay(compressedImageData);
+                    
+                    // 保存到用户数据
+                    this.saveAvatarData(compressedImageData);
+                    
+                    this.showMaterialToast('头像上传成功', 'success');
+                } catch (error) {
+                    console.error('头像处理失败:', error);
+                    this.showMaterialToast('头像处理失败，请重试', 'warning');
+                } finally {
+                    // 移除加载状态
+                    if (avatarContainer) {
+                        avatarContainer.classList.remove('uploading');
+                    }
+                }
+            };
+            
+            img.onerror = () => {
+                this.showMaterialToast('图片加载失败，请重试', 'warning');
+                if (avatarContainer) {
+                    avatarContainer.classList.remove('uploading');
+                }
+            };
+            
+            img.src = e.target.result;
+        };
+        
+        reader.onerror = () => {
+            this.showMaterialToast('文件读取失败，请重试', 'warning');
+            if (avatarContainer) {
+                avatarContainer.classList.remove('uploading');
+            }
+        };
+        
+        reader.readAsDataURL(file);
+    }
+
+    updateAvatarDisplay(imageData) {
+        const avatarImg = document.getElementById('profile-avatar-img');
+        const avatarIcon = document.getElementById('profile-avatar-icon');
+        
+        if (avatarImg && avatarIcon) {
+            avatarImg.src = imageData;
+            avatarImg.style.display = 'block';
+            avatarIcon.style.display = 'none';
+        }
+    }
+
+    saveAvatarData(imageData) {
+        if (!this.currentUser.profile) {
+            this.currentUser.profile = {};
+        }
+        this.currentUser.profile.avatar = imageData;
+        this.currentUser.save();
+    }
+
+    loadAvatar() {
+        const avatarImg = document.getElementById('profile-avatar-img');
+        const avatarIcon = document.getElementById('profile-avatar-icon');
+        const avatarDeleteBtn = document.getElementById('avatar-delete-btn');
+        
+        if (avatarImg && avatarIcon) {
+            const profile = this.currentUser.profile || {};
+            if (profile.avatar) {
+                avatarImg.src = profile.avatar;
+                avatarImg.style.display = 'block';
+                avatarIcon.style.display = 'none';
+                if (avatarDeleteBtn) {
+                    avatarDeleteBtn.style.display = 'flex';
+                }
+            } else {
+                avatarImg.style.display = 'none';
+                avatarIcon.style.display = 'block';
+                if (avatarDeleteBtn) {
+                    avatarDeleteBtn.style.display = 'none';
+                }
+            }
+        }
+    }
+
+    deleteAvatar() {
+        // 清除头像数据
+        if (this.currentUser.profile) {
+            delete this.currentUser.profile.avatar;
+            this.currentUser.save();
+        }
+        
+        // 更新显示
+        this.loadAvatar();
+        
+        // 清除文件输入
+        const avatarUpload = document.getElementById('avatar-upload');
+        if (avatarUpload) {
+            avatarUpload.value = '';
+        }
+        
+        this.showMaterialToast('头像已删除', 'success');
+    }
+
     updateProfileInfo() {
         const nameEl = document.getElementById('profile-name');
         const emailEl = document.getElementById('profile-email');
         
-        if (nameEl) nameEl.textContent = this.currentUser.name;
-        if (emailEl) emailEl.textContent = this.currentUser.email;
+        // 获取昵称，优先使用profile中的昵称，否则使用用户名称
+        const profile = this.currentUser.profile || {};
+        const displayName = profile.nickname || this.currentUser.name || '游客000000';
+        
+        if (nameEl) nameEl.textContent = displayName;
+        if (emailEl) emailEl.textContent = this.currentUser.email || 'explorer@learning.com';
+        
+        // 加载头像
+        this.loadAvatar();
+        
+        // 更新基本信息
+        this.updateBasicInfo();
+        
+        // 更新兴趣爱好
+        this.updateHobbies();
+        
+        // 更新学习统计
+        this.updateLearningStats();
+    }
+
+    updateBasicInfo() {
+        const nicknameEl = document.getElementById('profile-nickname');
+        const genderEl = document.getElementById('profile-gender');
+        const ageEl = document.getElementById('profile-age');
+        const occupationEl = document.getElementById('profile-occupation');
+        const locationEl = document.getElementById('profile-location');
+        
+        const profile = this.currentUser.profile || {};
+        
+        if (nicknameEl) nicknameEl.textContent = profile.nickname || '未设置';
+        if (genderEl) genderEl.textContent = this.getGenderText(profile.gender);
+        if (ageEl) ageEl.textContent = profile.age ? `${profile.age}岁` : '未设置';
+        if (occupationEl) occupationEl.textContent = profile.occupation || '未设置';
+        if (locationEl) locationEl.textContent = profile.location || '未设置';
+    }
+
+    getGenderText(gender) {
+        const genderMap = {
+            'male': '男',
+            'female': '女',
+            'other': '其他'
+        };
+        return genderMap[gender] || '未设置';
+    }
+
+    updateHobbies() {
+        const hobbiesContainer = document.getElementById('profile-hobbies');
+        if (!hobbiesContainer) return;
+        
+        const profile = this.currentUser.profile || {};
+        const hobbies = profile.hobbies || [];
+        
+        if (hobbies.length === 0) {
+            hobbiesContainer.innerHTML = '<p class="empty-state">暂无兴趣爱好</p>';
+            return;
+        }
+        
+        hobbiesContainer.innerHTML = hobbies.map(hobby => 
+            `<span class="hobby-tag">${hobby.trim()}</span>`
+        ).join('');
+    }
+
+    updateLearningStats() {
+        const stats = storage.getJourneyStats();
+        
+        const elements = {
+            'active-journeys-count': stats.activeJourneys,
+            'total-insights-count': stats.totalInsights,
+            'community-connections': 0 // 暂时设为0，后续可以从社区数据获取
+        };
+        
+        Object.entries(elements).forEach(([id, value]) => {
+            const element = document.getElementById(id);
+            if (element) {
+                element.textContent = value;
+            }
+        });
     }
 
     loadUserPreferences() {
         const explorationRange = document.getElementById('exploration-range');
         if (explorationRange) {
-            explorationRange.value = this.currentUser.preferences.explorationVsClosure || 50;
+            explorationRange.value = this.currentUser.preferences?.explorationVsClosure || 50;
             
             explorationRange.addEventListener('input', (e) => {
+                if (!this.currentUser.preferences) {
+                    this.currentUser.preferences = {};
+                }
                 this.currentUser.preferences.explorationVsClosure = parseInt(e.target.value);
                 this.currentUser.save();
             });
         }
+    }
+
+    showEditProfileModal() {
+        const modal = document.getElementById('edit-profile-modal');
+        if (!modal) return;
+        
+        // 填充现有数据
+        const profile = this.currentUser.profile || {};
+        
+        const nicknameInput = document.getElementById('edit-nickname');
+        const genderSelect = document.getElementById('edit-gender');
+        const ageInput = document.getElementById('edit-age');
+        const occupationInput = document.getElementById('edit-occupation');
+        const locationInput = document.getElementById('edit-location');
+        const hobbiesTextarea = document.getElementById('edit-hobbies');
+        
+        if (nicknameInput) nicknameInput.value = profile.nickname || this.currentUser.name || '';
+        if (genderSelect) genderSelect.value = profile.gender || '';
+        if (ageInput) ageInput.value = profile.age || '';
+        if (occupationInput) occupationInput.value = profile.occupation || '';
+        if (locationInput) locationInput.value = profile.location || '';
+        if (hobbiesTextarea) hobbiesTextarea.value = (profile.hobbies || []).join(', ');
+        
+        modal.classList.add('show');
+    }
+
+    saveProfile() {
+        const nickname = document.getElementById('edit-nickname').value.trim();
+        const gender = document.getElementById('edit-gender').value;
+        const age = parseInt(document.getElementById('edit-age').value) || null;
+        const occupation = document.getElementById('edit-occupation').value.trim();
+        const location = document.getElementById('edit-location').value.trim();
+        const hobbiesText = document.getElementById('edit-hobbies').value.trim();
+        
+        // 解析兴趣爱好
+        const hobbies = hobbiesText ? hobbiesText.split(',').map(h => h.trim()).filter(h => h) : [];
+        
+        // 保存到用户数据
+        if (!this.currentUser.profile) {
+            this.currentUser.profile = {};
+        }
+        
+        this.currentUser.profile = {
+            ...this.currentUser.profile,
+            nickname,
+            gender,
+            age,
+            occupation,
+            location,
+            hobbies
+        };
+        
+        this.currentUser.save();
+        
+        // 更新界面
+        this.updateProfileInfo();
+        
+        // 关闭模态框
+        this.closeModal('edit-profile-modal');
+        
+        // 显示成功消息
+        this.showMaterialToast('个人资料已保存', 'success');
     }
 
     updateResonanceProfile() {
@@ -1078,6 +1491,413 @@ class PhenomenalLearningApp {
     }
 }
 
+// 添加词云数据管理功能
+function addWordToTable(word, frequency = 50, category = 'custom') {
+    WORDCLOUD_DATA_TABLE.push({
+        word: word,
+        frequency: Math.max(1, Math.min(100, frequency)),
+        category: category
+    });
+}
+
+function removeWordFromTable(word) {
+    const index = WORDCLOUD_DATA_TABLE.findIndex(item => item.word === word);
+    if (index > -1) {
+        WORDCLOUD_DATA_TABLE.splice(index, 1);
+    }
+}
+
+function updateWordFrequency(word, newFrequency) {
+    const item = WORDCLOUD_DATA_TABLE.find(item => item.word === word);
+    if (item) {
+        item.frequency = Math.max(1, Math.min(100, newFrequency));
+    }
+}
+
+function getWordCloudTableData() {
+    return [...WORDCLOUD_DATA_TABLE];
+}
+
+// 词云数据表格 - 名词和词频
+const WORDCLOUD_DATA_TABLE = [
+    // 学习核心概念 (高频)
+    { word: '知识', frequency: 95, category: 'learning' },
+    { word: '思考', frequency: 88, category: 'learning' },
+    { word: '理解', frequency: 85, category: 'learning' },
+    { word: '探索', frequency: 82, category: 'learning' },
+    { word: '智慧', frequency: 80, category: 'learning' },
+    
+    // 学科领域 (中高频)
+    { word: '数学', frequency: 75, category: 'subject' },
+    { word: '物理', frequency: 72, category: 'subject' },
+    { word: '哲学', frequency: 70, category: 'subject' },
+    { word: '艺术', frequency: 68, category: 'subject' },
+    { word: '历史', frequency: 65, category: 'subject' },
+    { word: '文学', frequency: 63, category: 'subject' },
+    { word: '化学', frequency: 60, category: 'subject' },
+    { word: '生物', frequency: 58, category: 'subject' },
+    { word: '心理学', frequency: 55, category: 'subject' },
+    { word: '计算机', frequency: 52, category: 'subject' },
+    
+    // 思维方法 (中频)
+    { word: '分析', frequency: 48, category: 'method' },
+    { word: '逻辑', frequency: 45, category: 'method' },
+    { word: '推理', frequency: 42, category: 'method' },
+    { word: '创新', frequency: 40, category: 'method' },
+    { word: '创造', frequency: 38, category: 'method' },
+    { word: '综合', frequency: 35, category: 'method' },
+    { word: '归纳', frequency: 32, category: 'method' },
+    { word: '演绎', frequency: 30, category: 'method' },
+    
+    // 抽象概念 (中频)
+    { word: '真理', frequency: 45, category: 'concept' },
+    { word: '美', frequency: 42, category: 'concept' },
+    { word: '善', frequency: 40, category: 'concept' },
+    { word: '自由', frequency: 38, category: 'concept' },
+    { word: '正义', frequency: 35, category: 'concept' },
+    { word: '和谐', frequency: 32, category: 'concept' },
+    { word: '平衡', frequency: 30, category: 'concept' },
+    
+    // 学习目标 (中频)
+    { word: '目标', frequency: 42, category: 'goal' },
+    { word: '计划', frequency: 40, category: 'goal' },
+    { word: '方向', frequency: 38, category: 'goal' },
+    { word: '未来', frequency: 35, category: 'goal' },
+    { word: '梦想', frequency: 32, category: 'goal' },
+    { word: '愿景', frequency: 30, category: 'goal' },
+    
+    // 能力技能 (中低频)
+    { word: '技能', frequency: 28, category: 'skill' },
+    { word: '能力', frequency: 25, category: 'skill' },
+    { word: '天赋', frequency: 22, category: 'skill' },
+    { word: '潜力', frequency: 20, category: 'skill' },
+    { word: '经验', frequency: 18, category: 'skill' },
+    
+    // 过程状态 (低频)
+    { word: '过程', frequency: 15, category: 'process' },
+    { word: '状态', frequency: 12, category: 'process' },
+    { word: '关系', frequency: 10, category: 'process' },
+    { word: '结构', frequency: 8, category: 'process' },
+    { word: '系统', frequency: 5, category: 'process' }
+];
+
+// 根据表格数据获取随机词云数据
+function getRandomWordCloudDataFromTable() {
+    console.log('开始生成词云数据，当前数据表长度:', WORDCLOUD_DATA_TABLE.length);
+    
+    if (WORDCLOUD_DATA_TABLE.length === 0) {
+        console.warn('数据表为空，使用默认数据');
+        loadWordCloudFromCSV(DEFAULT_CSV_DATA);
+    }
+    
+    // 随机打乱表格数据
+    const shuffled = [...WORDCLOUD_DATA_TABLE].sort(() => 0.5 - Math.random());
+    
+    // 根据词频权重选择词条
+    const selectedWords = [];
+    const count = 25 + Math.floor(Math.random() * 10); // 25-35个词
+    
+    for (let i = 0; i < Math.min(count, shuffled.length); i++) {
+        const item = shuffled[i];
+        // 根据词频计算被选中的概率
+        const selectionProbability = item.frequency / 100;
+        if (Math.random() < selectionProbability) {
+            selectedWords.push(item);
+        }
+    }
+    
+    // 如果选中的词不够，补充一些
+    while (selectedWords.length < count && shuffled.length > selectedWords.length) {
+        const remainingWords = shuffled.filter(word => !selectedWords.includes(word));
+        if (remainingWords.length > 0) {
+            selectedWords.push(remainingWords[0]);
+        }
+    }
+    
+    console.log('选中的词汇:', selectedWords.map(item => item.word));
+    
+    // 转换为词云格式 [word, size]，直接使用CSV中的词频数据
+    const result = selectedWords.map(item => [
+        item.word, 
+        Math.max(20, Math.min(100, item.frequency)) // 使用CSV词频，范围20-100
+    ]);
+    
+    console.log('生成的词云数据:', result);
+    return result;
+}
+
+
+
+function renderWordCloud() {
+    const canvas = document.getElementById('wordcloud-canvas');
+    if (!canvas) {
+        console.warn('词云canvas元素未找到');
+        return;
+    }
+    if (typeof WordCloud !== 'function') {
+        console.warn('WordCloud函数未加载');
+        return;
+    }
+    
+    const data = getRandomWordCloudDataFromTable();
+    console.log('词云数据:', data);
+    
+    if (!data || data.length === 0) {
+        console.warn('词云数据为空');
+        return;
+    }
+    
+    // 检查数据格式
+    const validData = data.filter(item => item && item[0] && typeof item[1] === 'number' && item[1] > 0);
+    if (validData.length === 0) {
+        console.warn('没有有效的词云数据');
+        return;
+    }
+    
+    console.log('有效词云数据:', validData);
+    
+    WordCloud(canvas, {
+        list: validData,
+        gridSize: 20, // 进一步减小网格大小，让词更密集
+        weightFactor: function (size) { 
+            // 字体整体再缩小2号
+            return Math.max(12, Math.min(40, size * 0.8)); 
+        },
+        fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+        color: function() {
+            // Google Material Design 色彩
+            const colors = [
+                '#1976d2', '#2196f3', '#03a9f4', '#00bcd4', // 蓝色系
+                '#4caf50', '#8bc34a', '#cddc39', '#ffeb3b', // 绿色系
+                '#ff9800', '#ff5722', '#f44336', '#e91e63', // 橙色系
+                '#9c27b0', '#673ab7', '#3f51b5', '#2196f3'  // 紫色系
+            ];
+            return colors[Math.floor(Math.random() * colors.length)];
+        },
+        backgroundColor: 'rgba(0,0,0,0)',
+        rotateRatio: 0.1, // 减少旋转，让文字更易读
+        rotationSteps: 2,
+        drawOutOfBound: false,
+        ellipticity: 0.2, // 更扁平，接近水平椭圆
+        hover: function(item, dimension, evt) {
+            canvas.style.cursor = item ? 'pointer' : 'default';
+            // 添加悬停效果
+            if (item) {
+                canvas.style.filter = 'drop-shadow(0 4px 12px rgba(25, 118, 210, 0.3))';
+            } else {
+                canvas.style.filter = 'none';
+            }
+        },
+        click: function(item) {
+            const input = document.getElementById('inspiration-input');
+            if (input && item[0]) {
+                input.value = item[0];
+                input.focus();
+                
+                // 添加点击动画效果
+                input.style.transform = 'scale(1.02)';
+                input.style.boxShadow = '0 0 0 4px rgba(25, 118, 210, 0.2)';
+                setTimeout(() => {
+                    input.style.transform = 'scale(1)';
+                    input.style.boxShadow = '';
+                }, 200);
+            }
+        }
+    });
+}
+
+let wordCloudTimer = null;
+function setupWordCloudAutoRefresh() {
+    renderWordCloud();
+    if (window.wordCloudTimer) clearInterval(window.wordCloudTimer);
+    window.wordCloudTimer = setInterval(renderWordCloud, 60000); // 每分钟刷新
+}
+
+// 强制渲染词云的测试函数
+function forceRenderWordCloud() {
+    console.log('强制渲染词云...');
+    console.log('当前数据表长度:', WORDCLOUD_DATA_TABLE.length);
+    
+    if (WORDCLOUD_DATA_TABLE.length === 0) {
+        console.log('数据表为空，使用默认数据...');
+        loadWordCloudFromCSV(DEFAULT_CSV_DATA);
+    }
+    
+    renderWordCloud();
+}
+
+// Home页面加载时渲染词云
+function setupHomeInspiration() {
+    console.log('设置Home页面词云...');
+    setTimeout(async () => {
+        if (WORDCLOUD_DATA_TABLE.length === 0) {
+            console.log('数据未加载，重新初始化...');
+            await initializeWordCloudData();
+        }
+        renderWordCloud();
+        setupWordCloudAutoRefresh();
+        setTimeout(() => {
+            if (document.getElementById('wordcloud-canvas') && 
+                !document.getElementById('wordcloud-canvas').getContext('2d').getImageData(0, 0, 1, 1).data.some(pixel => pixel !== 0)) {
+                console.log('词云可能未渲染，再次尝试...');
+                forceRenderWordCloud();
+            }
+        }, 1000);
+    }, 200);
+    
+    // 输入框提交逻辑增强
+    const input = document.getElementById('inspiration-input');
+    const btn = document.getElementById('inspiration-submit-btn');
+    if (input && btn) {
+        btn.onclick = async () => {
+            const word = input.value.trim();
+            if (!word) return;
+            
+            // 显示加载状态
+            btn.disabled = true;
+            btn.textContent = '处理中...';
+            
+            try {
+                // 先Dify校验
+                const result = await callDifyCheck(word);
+                if (result === '违禁') {
+                    showForbiddenModal();
+                    return;
+                }
+                
+                // 获取Dify学习起点选项
+                const options = await callDifyGetOptions(word);
+                
+                // ① CSV表里更新词频
+                let found = false;
+                for (let i = 0; i < WORDCLOUD_DATA_TABLE.length; i++) {
+                    if (WORDCLOUD_DATA_TABLE[i].word === word) {
+                        WORDCLOUD_DATA_TABLE[i].frequency = Math.min(WORDCLOUD_DATA_TABLE[i].frequency + 1, 999);
+                        found = true;
+                        break;
+                    }
+                }
+                if (!found) {
+                    WORDCLOUD_DATA_TABLE.push({ word, frequency: 1, category: 'custom' });
+                }
+                renderWordCloud();
+                input.value = '';
+                
+                // ② 弹窗交互，使用Dify返回的选项，传递当前输入的词
+                showJourneyStartModal(options, word);
+            } catch (error) {
+                console.error('处理输入时出错:', error);
+                // 出错时使用默认选项
+                showJourneyStartModal(['探索基础概念', '深入研究应用', '联系实际案例'], word);
+            } finally {
+                // 恢复按钮状态
+                btn.disabled = false;
+                btn.textContent = '发送';
+            }
+        };
+        input.addEventListener('keydown', e => {
+            if (e.key === 'Enter') {
+                btn.click();
+            }
+        });
+    }
+    // 新增：点击今日灵感备选词填入输入框
+    document.querySelectorAll('.inspiration-suggest-item').forEach(item => {
+        item.onclick = () => {
+            input.value = item.textContent;
+            input.focus();
+        };
+    });
+}
+
+// 弹窗显示/关闭逻辑
+function showJourneyStartModal(options = ['探索基础概念', '深入研究应用', '联系实际案例'], currentWord = '') {
+    const modal = document.getElementById('journey-start-modal');
+    if (!modal) return;
+    
+    // 动态更新选项内容，只显示Dify返回的数量
+    const optionBtns = modal.querySelectorAll('.journey-option-btn');
+    optionBtns.forEach((btn, index) => {
+        if (options[index]) {
+            const text = options[index];
+            btn.textContent = text;
+            btn.style.display = '';
+            
+            // 移除文本长度属性，确保字体大小一致
+            btn.removeAttribute('data-text-length');
+        } else {
+            btn.textContent = '';
+            btn.style.display = 'none';
+            btn.removeAttribute('data-text-length');
+        }
+    });
+    
+    modal.classList.add('show');
+    
+    // 选项点击动效
+    const btns = modal.querySelectorAll('.journey-option-btn');
+    btns.forEach((btn, index) => {
+        btn.onclick = async () => {
+            btn.classList.add('selected');
+            
+            // 创建新的journey，保存Home页输入和选项
+            if (app && currentWord && options[index]) {
+                try {
+                    const journey = await journeyService.createJourney({
+                        userId: app.currentUser.id,
+                        title: currentWord,
+                        coreQuestion: options[index],
+                        description: `基于"${currentWord}"的学习探索：${options[index]}`,
+                        tags: [currentWord, 'home-exploration'],
+                        metadata: {
+                            homeWord: currentWord,
+                            homeOptions: options,
+                            selectedOption: options[index]
+                        }
+                    });
+                    
+                    // 设置为当前journey
+                    app.currentJourney = journey;
+                    
+                    // 立即更新journey页面显示
+                    app.displayCurrentJourney();
+                    
+                    // 跳转到journey页面
+                    app.loadPage('journey');
+                    document.querySelector('[data-page="journey"]').classList.add('active');
+                    document.querySelector('[data-page="home"]').classList.remove('active');
+                    
+                } catch (error) {
+                    console.error('创建journey失败:', error);
+                }
+            }
+            
+            setTimeout(() => {
+                modal.classList.remove('show');
+                btn.classList.remove('selected');
+            }, 350);
+        };
+    });
+    
+    // 点击遮罩关闭
+    const mask = modal.querySelector('.modal-mask');
+    if (mask) {
+        mask.onclick = () => modal.classList.remove('show');
+    }
+}
+
+// 在页面切换到Home时自动渲染词云
+const originalLoadHomePage = PhenomenalLearningApp.prototype.loadHomePage;
+PhenomenalLearningApp.prototype.loadHomePage = async function() {
+    if (typeof originalLoadHomePage === 'function') {
+        await originalLoadHomePage.apply(this, arguments);
+    }
+    // 延迟调用，确保页面内容已加载
+    setTimeout(() => {
+        setupHomeInspiration();
+    }, 100);
+};
+
 // Global functions for HTML onclick handlers
 function startNewJourney() {
     app.showModal('new-question-modal');
@@ -1118,7 +1938,285 @@ PhenomenalLearningApp.prototype.showModal = function(modalId) {
     }
 };
 
-// Initialize app when DOM is loaded
-document.addEventListener('DOMContentLoaded', () => {
+// CSV表格支持
+const DEFAULT_CSV_DATA = `word,frequency,category
+知识,95,learning
+思考,88,learning
+理解,85,learning
+探索,82,learning
+智慧,80,learning
+数学,75,subject
+物理,72,subject
+哲学,70,subject
+艺术,68,subject
+历史,65,subject
+文学,63,subject
+化学,60,subject
+生物,58,subject
+心理学,55,subject
+计算机,52,subject
+分析,48,method
+逻辑,45,method
+推理,42,method
+创新,40,method
+创造,38,method
+综合,35,method
+归纳,32,method
+演绎,30,method
+真理,45,concept
+美,42,concept
+善,40,concept
+自由,38,concept
+正义,35,concept
+和谐,32,concept
+平衡,30,concept
+目标,42,goal
+计划,40,goal
+方向,38,goal
+未来,35,goal
+梦想,32,goal
+愿景,30,goal
+技能,28,skill
+能力,25,skill
+天赋,22,skill
+潜力,20,skill
+经验,18,skill
+过程,15,process
+状态,12,process
+关系,10,process
+结构,8,process
+系统,5,process`;
+
+// 从CSV字符串解析数据
+function parseCSVData(csvString) {
+    const lines = csvString.trim().split('\n');
+    const headers = lines[0].split(',');
+    const data = [];
+    
+    for (let i = 1; i < lines.length; i++) {
+        const values = lines[i].split(',');
+        if (values.length >= 3) {
+            data.push({
+                word: values[0].trim(),
+                frequency: parseInt(values[1].trim()) || 50,
+                category: values[2].trim()
+            });
+        }
+    }
+    
+    return data;
+}
+
+// 将数据转换为CSV字符串
+function convertToCSV(data) {
+    const headers = ['word', 'frequency', 'category'];
+    const csvLines = [headers.join(',')];
+    
+    data.forEach(item => {
+        csvLines.push(`${item.word},${item.frequency},${item.category}`);
+    });
+    
+    return csvLines.join('\n');
+}
+
+// 从CSV加载词云数据
+function loadWordCloudFromCSV(csvString) {
+    try {
+        const data = parseCSVData(csvString);
+        WORDCLOUD_DATA_TABLE.length = 0; // 清空现有数据
+        WORDCLOUD_DATA_TABLE.push(...data);
+        console.log(`成功加载 ${data.length} 个词汇`);
+        return true;
+    } catch (error) {
+        console.error('CSV解析失败:', error);
+        return false;
+    }
+}
+
+// 重置为默认CSV数据
+function resetToDefaultCSV() {
+    loadWordCloudFromCSV(DEFAULT_CSV_DATA);
+}
+
+// 初始化时加载默认CSV数据
+function initializeWordCloudData() {
+    // 尝试从localStorage加载保存的数据
+    const savedData = localStorage.getItem('wordcloud_csv_data');
+    if (savedData) {
+        loadWordCloudFromCSV(savedData);
+    } else {
+        // 使用默认数据
+        loadWordCloudFromCSV(DEFAULT_CSV_DATA);
+    }
+}
+
+// 更新词云数据表格时自动保存
+// const originalAddWordToTable = addWordToTable;
+// addWordToTable = function(word, frequency = 50, category = 'custom') {
+//     originalAddWordToTable(word, frequency, category);
+//     saveWordCloudData();
+// };
+
+// const originalRemoveWordFromTable = removeWordFromTable;
+// removeWordFromTable = function(word) {
+//     originalRemoveWordFromTable(word);
+//     saveWordCloudData();
+// };
+
+// const originalUpdateWordFrequency = updateWordFrequency;
+// updateWordFrequency = function(word, newFrequency) {
+//     originalUpdateWordFrequency(word, newFrequency);
+//     saveWordCloudData();
+// };
+
+// 在应用初始化时加载CSV数据
+document.addEventListener('DOMContentLoaded', async () => {
+    console.log('DOM加载完成，开始初始化应用...');
+    await initializeWordCloudData();
     window.app = new PhenomenalLearningApp();
+    console.log('应用初始化完成');
 });
+
+
+
+
+
+// 从CSV文件加载词云数据
+async function loadWordCloudFromCSVFile() {
+    try {
+        console.log('尝试加载CSV文件...');
+        const response = await fetch('wordcloud_data.csv');
+        if (!response.ok) {
+            throw new Error(`HTTP错误: ${response.status}`);
+        }
+        const csvString = await response.text();
+        console.log('CSV文件内容长度:', csvString.length);
+        const success = loadWordCloudFromCSV(csvString);
+        console.log('CSV解析结果:', success);
+        return success;
+    } catch (error) {
+        console.error('加载CSV文件失败:', error);
+        // 如果文件加载失败，使用默认数据
+        console.log('使用默认数据作为备用...');
+        loadWordCloudFromCSV(DEFAULT_CSV_DATA);
+        return false;
+    }
+}
+
+// 初始化时从CSV文件加载数据
+async function initializeWordCloudData() {
+    console.log('开始初始化词云数据...');
+    // 直接从CSV文件加载
+    const success = await loadWordCloudFromCSVFile();
+    console.log('词云数据初始化完成，成功:', success, '数据条数:', WORDCLOUD_DATA_TABLE.length);
+    return success;
+}
+
+// 全局测试函数，方便在控制台调试
+window.testWordCloud = function() {
+    console.log('=== 词云测试 ===');
+    console.log('数据表长度:', WORDCLOUD_DATA_TABLE.length);
+    console.log('Canvas元素:', document.getElementById('wordcloud-canvas'));
+    console.log('WordCloud函数:', typeof WordCloud);
+    console.log('数据样本:', WORDCLOUD_DATA_TABLE.slice(0, 5));
+    
+    // 尝试使用测试数据渲染
+    const testData = getTestWordCloudData();
+    console.log('使用测试数据:', testData);
+    renderWordCloudWithData(testData);
+};
+
+window.forceRenderWordCloud = forceRenderWordCloud;
+window.renderWordCloudWithData = renderWordCloudWithData;
+window.getTestWordCloudData = getTestWordCloudData;
+
+// 简单的测试词云数据
+function getTestWordCloudData() {
+    return [
+        ['知识', 80],
+        ['思考', 70],
+        ['理解', 65],
+        ['探索', 60],
+        ['智慧', 55],
+        ['数学', 50],
+        ['物理', 45],
+        ['哲学', 40],
+        ['艺术', 35],
+        ['历史', 30]
+    ];
+}
+
+// 强制渲染词云的测试函数
+function forceRenderWordCloud() {
+    console.log('强制渲染词云...');
+    console.log('当前数据表长度:', WORDCLOUD_DATA_TABLE.length);
+    
+    if (WORDCLOUD_DATA_TABLE.length === 0) {
+        console.log('数据表为空，使用测试数据...');
+        const testData = getTestWordCloudData();
+        renderWordCloudWithData(testData);
+        return;
+    }
+    
+    renderWordCloud();
+}
+
+// 使用指定数据渲染词云
+function renderWordCloudWithData(data) {
+    const canvas = document.getElementById('wordcloud-canvas');
+    if (!canvas) {
+        console.warn('词云canvas元素未找到');
+        return;
+    }
+    if (typeof WordCloud !== 'function') {
+        console.warn('WordCloud函数未加载');
+        return;
+    }
+    
+    console.log('使用指定数据渲染词云:', data);
+    
+    WordCloud(canvas, {
+        list: data,
+        gridSize: 25,
+        weightFactor: function (size) { 
+            return Math.max(30, Math.min(200, size * 2.5)); 
+        },
+        fontFamily: 'inherit',
+        color: function() {
+            const colors = ['#6366f1', '#7c3aed', '#a5b4fc', '#3730a3', '#818cf8', '#f59e42', '#f43f5e', '#10b981', '#fbbf24', '#3b82f6'];
+            return colors[Math.floor(Math.random() * colors.length)];
+        },
+        backgroundColor: 'rgba(0,0,0,0)',
+        rotateRatio: 0.15,
+        rotationSteps: 2,
+        drawOutOfBound: false,
+        ellipticity: 0.3,
+        hover: function(item, dimension, evt) {
+            canvas.style.cursor = item ? 'pointer' : 'default';
+        },
+        click: function(item) {
+            const input = document.getElementById('inspiration-input');
+            if (input && item[0]) {
+                input.value = item[0];
+                input.focus();
+            }
+        }
+    });
+}
+
+// Dify API 调用现在通过 services.js 中的 callDifyCheck 函数
+
+// 违禁弹窗显示/关闭
+function showForbiddenModal() {
+    const modal = document.getElementById('forbidden-modal');
+    if (!modal) return;
+    modal.classList.add('show');
+    const closeBtn = modal.querySelector('.forbidden-close-btn');
+    if (closeBtn) {
+        closeBtn.onclick = () => modal.classList.remove('show');
+    }
+    const mask = modal.querySelector('.modal-mask');
+    if (mask) {
+        mask.onclick = () => modal.classList.remove('show');
+    }
+}

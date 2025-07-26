@@ -406,16 +406,10 @@ class SessionService {
     }
 }
 
-// Dify workflow API 调用
-async function callDifyWorkflow(question) {
-    console.log('开始调用 Dify API，问题:', question);
-
+// 通用 Dify API 调用工具
+async function callDifyApi({ query, apiKey }) {
     const apiUrl = 'http://dify.myia.fun/v1/chat-messages';
-    const apiKey = 'app-SCmEMYmTLvhOoXCkOt4ff9DN'; // 使用正确的 API key
-
     try {
-        console.log('发送请求到:', apiUrl);
-        
         const response = await fetch(apiUrl, {
             method: 'POST',
             mode: 'cors',
@@ -425,45 +419,97 @@ async function callDifyWorkflow(question) {
             },
             body: JSON.stringify({
                 inputs: {},
-                query: question,
+                query: query,
                 response_mode: 'blocking',
                 conversation_id: '',
                 user: 'phenomenal-learning-user'
             })
         });
-
-        console.log('响应状态:', response.status, response.statusText);
-
-        if (response.ok) {
-            const data = await response.json();
-            console.log('成功获取响应:', data);
-            
-            // 根据 Dify API 响应格式提取答案
-            if (data.answer) {
-                return data.answer;
-            } else if (data.message) {
-                return data.message;
-            } else if (data.data && data.data.answer) {
-                return data.data.answer;
-            } else {
-                console.warn('未知的响应格式:', data);
-                return JSON.stringify(data);
-            }
-        } else {
+        if (!response.ok) {
             const errorText = await response.text();
-            console.error('API 错误响应:', errorText);
-            throw new Error(`Dify API 调用失败: ${response.status} - ${errorText}`);
+            throw new Error(`Dify API 错误: ${response.status} - ${errorText}`);
         }
+        return await response.json();
     } catch (error) {
         console.error('Dify API 调用异常:', error);
-        
-        // 如果是网络错误，返回模拟回复
-        if (error.name === 'TypeError' || error.message.includes('Failed to fetch')) {
-            console.log('网络错误，使用模拟回复');
-            return `模拟 Dify 回复：关于"${question}"，这是一个很有趣的问题。由于网络连接问题，暂时无法获取 AI 回复，但你可以继续探索这个主题。`;
-        }
-        
         throw error;
+    }
+}
+
+// Dify workflow API 调用
+async function callDifyWorkflow(question) {
+    console.log('开始调用 Dify API，问题:', question);
+    const apiKey = 'app-SCmEMYmTLvhOoXCkOt4ff9DN';
+    try {
+        const data = await callDifyApi({ query: question, apiKey });
+        // 根据 Dify API 响应格式提取答案
+        if (data.answer) {
+            return data.answer;
+        } else if (data.message) {
+            return data.message;
+        } else if (data.data && data.data.answer) {
+            return data.data.answer;
+        } else {
+            console.warn('未知的响应格式:', data);
+            return JSON.stringify(data);
+        }
+    } catch (error) {
+        // 网络错误或异常时返回模拟回复
+        return `模拟 Dify 回复：关于"${question}"，这是一个很有趣的问题。由于网络连接问题，暂时无法获取 AI 回复，但你可以继续探索这个主题。`;
+    }
+}
+
+// 获取学习起点选项
+async function callDifyGetOptions(word) {
+    const apiKey = 'app-pfiGTmo7pH8PrIhpA89sUgo4';
+    const query = `基于词汇"${word}"，请提供三个不同的学习起点选项，每个选项用换行符分隔，格式简洁明了`;
+    try {
+        const data = await callDifyApi({ query, apiKey });
+        let result = '';
+        if (data.answer) {
+            result = data.answer;
+        } else if (data.message) {
+            result = data.message;
+        } else if (data.data && data.data.answer) {
+            result = data.data.answer;
+        } else {
+            console.warn('未知的响应格式:', data);
+            return [];
+        }
+        let options = result.split(/\r?\n|\n|\r|；|;|,|，/)
+            .map(s => s.trim().replace(/^\[|\]$/g, '').replace(/^['"]|['"]$/g, ''))
+            .filter(s => s);
+        console.log('Dify分割后的选项:', options);
+        return options.slice(0, 3);
+    } catch (error) {
+        return [];
+    }
+}
+
+// 词汇违禁检查
+async function callDifyCheck(word) {
+    const apiKey = 'app-pfiGTmo7pH8PrIhpA89sUgo4';
+    const query = `请检查词汇"${word}"是否违禁，只返回"违禁"或"正常"`;
+    try {
+        const data = await callDifyApi({ query, apiKey });
+        let result = '';
+        if (data.answer) {
+            result = data.answer;
+        } else if (data.message) {
+            result = data.message;
+        } else if (data.data && data.data.answer) {
+            result = data.data.answer;
+        } else {
+            console.warn('未知的响应格式:', data);
+            return '正常';
+        }
+        if (result.includes('违禁')) {
+            return '违禁';
+        } else {
+            return '正常';
+        }
+    } catch (error) {
+        return '正常';
     }
 }
 
@@ -473,3 +519,5 @@ window.journeyService = new JourneyService();
 window.resonanceService = new ResonanceService();
 window.sessionService = new SessionService();
 window.callDifyWorkflow = callDifyWorkflow;
+window.callDifyCheck = callDifyCheck;
+window.callDifyGetOptions = callDifyGetOptions;

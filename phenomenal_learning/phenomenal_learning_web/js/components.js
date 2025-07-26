@@ -460,7 +460,7 @@ class NodeCard {
         card.innerHTML = `
             <h5>${this.node.title}</h5>
             <p>${this.node.content.substring(0, 100)}${this.node.content.length > 100 ? '...' : ''}</p>
-            <span class="node-type-badge">${this.node.type}</span>
+            <span class="node-type-badge">start</span>
         `;
         
         card.addEventListener('click', () => {

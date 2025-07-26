@@ -7,6 +7,9 @@
     <link rel="stylesheet" href="styles/main.css">
     <link rel="stylesheet" href="styles/components.css">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/wordcloud@1.2.2/src/wordcloud2.min.js"></script>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/d3-cloud@1.2.5/build/d3.layout.cloud.js"></script>
 </head>
 <body>
     <div id="app">
@@ -49,17 +52,31 @@
                 <div class="container">
                     <div class="hero-section">
                         <h1 class="hero-title">Welcome to Your Learning Constellation</h1>
-                        <p class="hero-subtitle">Embark on a journey of phenomenological discovery</p>
-                        <div class="daily-inspiration">
-                            <h3>Today's Inspiration</h3>
-                            <p class="inspiration-quote" id="daily-quote">
-                                "What is the most profound question that emerges from your current understanding?"
-                            </p>
-                            <button class="btn btn-primary" onclick="startNewJourney()">
-                                <i class="fas fa-plus"></i> Start New Journey
-                            </button>
+                        <p class="hero-subtitle">Embark on a journey of phenomenological discovery with just one word</p>
+                        <div class="home-main-layout">
+                            <div class="inspiration-card">
+                                <h3>Today's Word</h3>
+                                <div class="inspiration-input-group">
+                                    <input type="text" id="inspiration-input" class="inspiration-input" placeholder="今天想探索的单词">
+                                    <button class="inspiration-submit-btn" id="inspiration-submit-btn" title="保存灵感">
+                                        <i class="fas fa-paper-plane"></i>
+                                    </button>
+                                </div>
+                                <div class="inspiration-extra">
+                                    <div class="inspiration-suggest-label">今日灵感</div>
+                                    <div class="inspiration-suggest-list">
+                                        <span class="inspiration-suggest-item">创新</span>
+                                        <span class="inspiration-suggest-item">成长</span>
+                                        <span class="inspiration-suggest-item">协作</span>
+                                    </div>
+                                    <div class="inspiration-tips">Tips: 点击上方词语可快速填入输入框，或输入你想探索的词汇。</div>
+                                </div>
+                            </div>
+                            <div class="wordcloud-oval-container">
+                                <div class="wordcloud-label">今日热词</div>
+                                <canvas id="wordcloud-canvas" width="420" height="180"></canvas>
+                            </div>
                         </div>
-                    </div>
                     
                     <div class="dashboard-grid">
                         <div class="dashboard-card">
@@ -188,39 +205,152 @@
             <section id="profile-page" class="page">
                 <div class="container">
                     <div class="profile-header">
+                        <div class="profile-avatar-section">
                         <div class="profile-avatar">
-                            <i class="fas fa-user-circle"></i>
+                                <img id="profile-avatar-img" src="" alt="用户头像" style="display: none;">
+                                <i class="fas fa-user-circle" id="profile-avatar-icon"></i>
+                                <button class="avatar-edit-btn" id="avatar-edit-btn" title="更换头像">
+                                    <i class="fas fa-camera"></i>
+                                </button>
+                                <button class="avatar-delete-btn" id="avatar-delete-btn" title="删除头像" style="display: none;">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                                <input type="file" id="avatar-upload" accept="image/*" style="display: none;">
                         </div>
                         <div class="profile-info">
                             <h2 id="profile-name">Learning Explorer</h2>
-                            <p id="profile-email">explorer@learning.com</p>
-                            <p class="profile-stats">
-                                Journeys: <span id="total-journeys">0</span> | 
-                                Insights: <span id="total-insights">0</span> | 
-                                Resonances: <span id="total-resonances">0</span>
-                            </p>
+                                <p class="profile-email-container">
+                                    <span id="profile-email">explorer@learning.com</span>
+                                    <button class="email-edit-btn" id="email-edit-btn" title="编辑邮箱">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                </p>
+                                <div class="profile-stats">
+                                    <div class="stat-item">
+                                        <span class="stat-number" id="total-journeys">0</span>
+                                        <span class="stat-label">Journeys</span>
+                                    </div>
+                                    <div class="stat-item">
+                                        <span class="stat-number" id="total-insights">0</span>
+                                        <span class="stat-label">Insights</span>
+                                    </div>
+                                    <div class="stat-item">
+                                        <span class="stat-number" id="total-resonances">0</span>
+                                        <span class="stat-label">Resonances</span>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
+                        <button class="edit-profile-btn" id="edit-profile-btn">
+                            <i class="fas fa-edit"></i>
+                            <span>编辑资料</span>
+                        </button>
                     </div>
                     
                     <div class="profile-content">
-                        <div class="profile-section">
-                            <h3>Learning Preferences</h3>
-                            <div class="preference-grid">
-                                <div class="preference-item">
-                                    <label>Exploration vs Closure</label>
-                                    <input type="range" id="exploration-range" min="0" max="100" value="50">
-                                    <div class="range-labels">
-                                        <span>Closure</span>
-                                        <span>Exploration</span>
+                        <div class="profile-grid">
+                            <!-- 基本信息卡片 -->
+                            <div class="profile-card">
+                                <div class="card-header">
+                                    <i class="fas fa-user"></i>
+                                    <h3>基本信息</h3>
+                                </div>
+                                <div class="card-content">
+                                    <div class="info-grid">
+                                        <div class="info-item">
+                                            <label>昵称</label>
+                                            <span id="profile-nickname">未设置</span>
+                                        </div>
+                                        <div class="info-item">
+                                            <label>性别</label>
+                                            <span id="profile-gender">未设置</span>
+                                        </div>
+                                        <div class="info-item">
+                                            <label>年龄</label>
+                                            <span id="profile-age">未设置</span>
+                                        </div>
+                                        <div class="info-item">
+                                            <label>职业</label>
+                                            <span id="profile-occupation">未设置</span>
+                                        </div>
+                                        <div class="info-item">
+                                            <label>地区</label>
+                                            <span id="profile-location">未设置</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 兴趣爱好卡片 -->
+                            <div class="profile-card">
+                                <div class="card-header">
+                                    <i class="fas fa-heart"></i>
+                                    <h3>兴趣爱好</h3>
+                                </div>
+                                <div class="card-content">
+                                    <div class="hobbies-container" id="profile-hobbies">
+                                        <p class="empty-state">暂无兴趣爱好</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 学习偏好卡片 -->
+                            <div class="profile-card">
+                                <div class="card-header">
+                                    <i class="fas fa-brain"></i>
+                                    <h3>学习偏好</h3>
+                                </div>
+                                <div class="card-content">
+                                    <div class="preference-item">
+                                        <label>探索 vs 总结</label>
+                                        <div class="slider-container">
+                                            <input type="range" id="exploration-range" min="0" max="100" value="50" class="modern-slider">
+                                            <div class="slider-labels">
+                                                <span>总结</span>
+                                                <span>探索</span>
+                                            </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
                         
-                        <div class="profile-section">
-                            <h3>Resonance Profile</h3>
-                            <div id="resonance-profile">
-                                <p>Your resonance profile will develop as you engage more with the platform</p>
+                            <!-- 学习统计卡片 -->
+                            <div class="profile-card">
+                                <div class="card-header">
+                                    <i class="fas fa-chart-line"></i>
+                                    <h3>学习统计</h3>
+                                </div>
+                                <div class="card-content">
+                                    <div class="stats-grid">
+                                        <div class="stat-card">
+                                            <div class="stat-icon">
+                                                <i class="fas fa-route"></i>
+                                            </div>
+                                            <div class="stat-info">
+                                                <span class="stat-value" id="active-journeys-count">0</span>
+                                                <span class="stat-label">进行中的旅程</span>
+                                            </div>
+                                        </div>
+                                        <div class="stat-card">
+                                            <div class="stat-icon">
+                                                <i class="fas fa-lightbulb"></i>
+                                            </div>
+                                            <div class="stat-info">
+                                                <span class="stat-value" id="total-insights-count">0</span>
+                                                <span class="stat-label">总洞察数</span>
+                                            </div>
+                                        </div>
+                                        <div class="stat-card">
+                                            <div class="stat-icon">
+                                                <i class="fas fa-users"></i>
+                                            </div>
+                                            <div class="stat-info">
+                                                <span class="stat-value" id="community-connections">0</span>
+                                                <span class="stat-label">社区连接</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -257,6 +387,69 @@
                             </button>
                             <button type="submit" class="btn btn-primary">
                                 <i class="fas fa-rocket"></i> Begin Journey
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- 编辑资料模态框 -->
+        <div id="edit-profile-modal" class="modal">
+            <div class="modal-content large">
+                <div class="modal-header">
+                    <h3>编辑个人资料</h3>
+                    <button class="modal-close" onclick="closeModal('edit-profile-modal')">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <form id="edit-profile-form">
+                        <div class="form-section">
+                            <h4>基本信息</h4>
+                            <div class="form-grid">
+                                <div class="form-group">
+                                    <label>昵称</label>
+                                    <input type="text" id="edit-nickname" placeholder="请输入您的昵称">
+                                </div>
+                                <div class="form-group">
+                                    <label>性别</label>
+                                    <select id="edit-gender">
+                                        <option value="">请选择</option>
+                                        <option value="male">男</option>
+                                        <option value="female">女</option>
+                                        <option value="other">其他</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label>年龄</label>
+                                    <input type="number" id="edit-age" placeholder="请输入年龄" min="1" max="120">
+                                </div>
+                                <div class="form-group">
+                                    <label>职业</label>
+                                    <input type="text" id="edit-occupation" placeholder="请输入您的职业">
+                                </div>
+                                <div class="form-group">
+                                    <label>地区</label>
+                                    <input type="text" id="edit-location" placeholder="请输入您所在地区">
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="form-section">
+                            <h4>兴趣爱好</h4>
+                            <div class="form-group">
+                                <label>添加兴趣爱好（用逗号分隔）</label>
+                                <textarea id="edit-hobbies" placeholder="例如：阅读, 音乐, 旅行, 摄影..."></textarea>
+                            </div>
+                        </div>
+                        
+                        <div class="form-actions">
+                            <button type="button" class="btn btn-secondary" onclick="closeModal('edit-profile-modal')">
+                                取消
+                            </button>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save"></i> 保存更改
                             </button>
                         </div>
                     </form>
@@ -331,6 +524,63 @@
                 </div>
             </div>
         </div>
+
+        <div id="exploration-dialog-modal" class="modal">
+            <div class="modal-content material-design">
+                <div class="modal-header material-header">
+                    <div class="header-content">
+                        <div class="header-icon">
+                            <i class="fas fa-lightbulb"></i>
+                        </div>
+                        <div class="header-text">
+                            <h3>探索互动</h3>
+                            <p>与 AI 对话，记录你的思考</p>
+                        </div>
+                    </div>
+                    <button class="modal-close material-close" id="close-exploration-dialog">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="modal-body material-body">
+                    <div class="chat-container">
+                        <div id="exploration-dialog-history" class="chat-history"></div>
+                        <div id="exploration-dialog-input-section" class="input-section">
+                            <div class="input-container">
+                                <textarea id="exploration-dialog-input" class="material-input" placeholder="输入你的问题..."></textarea>
+                                <div class="input-actions">
+                                    <button class="btn-material primary" id="exploration-dialog-ask">
+                                        <i class="fas fa-question-circle"></i>
+                                        <span>提问</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <div id="exploration-dialog-reflection-section" class="input-section" style="display:none;">
+                            <div class="input-container">
+                                <textarea id="exploration-dialog-reflection-input" class="material-input" placeholder="输入你的感悟或反思..."></textarea>
+                                <div class="input-actions">
+                                    <button class="btn-material secondary" id="exploration-dialog-share">
+                                        <i class="fas fa-heart"></i>
+                                        <span>分享感悟</span>
+                                    </button>
+                                    <button class="btn-material reflection" id="exploration-dialog-reflection">
+                                        <i class="fas fa-brain"></i>
+                                        <span>深度反思</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <div id="exploration-dialog-explored" class="explored-status" style="display:none;">
+                            <div class="status-content">
+                                <i class="fas fa-check-circle"></i>
+                                <span>已探索</span>
+                            </div>
+                        </div>
+                        <div id="exploration-dialog-status" class="status-message"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- Scripts -->
@@ -339,5 +589,26 @@
     <script src="js/services.js"></script>
     <script src="js/components.js"></script>
     <script src="js/app.js"></script>
+    <!-- 学习之旅起点选择弹窗 -->
+    <div id="journey-start-modal" class="modal journey-start-modal">
+        <div class="modal-mask"></div>
+        <div class="modal-content journey-start-content">
+            <h2 class="modal-title">请选择您今日学习之旅的起点</h2>
+            <div class="journey-options">
+                <button class="journey-option-btn" data-value="A">A</button>
+                <button class="journey-option-btn" data-value="B">B</button>
+                <button class="journey-option-btn" data-value="C">C</button>
+            </div>
+        </div>
+    </div>
+    <!-- 违禁词友好提醒弹窗 -->
+    <div id="forbidden-modal" class="modal forbidden-modal">
+        <div class="modal-mask"></div>
+        <div class="modal-content forbidden-content">
+            <h2 class="modal-title">温馨提示</h2>
+            <div class="forbidden-message">该词汇不适合，请更换后再试~</div>
+            <button class="btn-material primary forbidden-close-btn">我知道了</button>
+        </div>
+    </div>
 </body>
 </html>
