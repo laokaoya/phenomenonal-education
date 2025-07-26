@@ -85,9 +85,3 @@
 4. remix 他人的旅程并加入个人体验。
 5. 看到自己的思考如何引发他人共鸣与传播。
 6. 体验"活着即是学习"，而不仅仅是"知道"。
-
-## 下一步建议
-从以下部分开始：
-- 创建 main.dart 与 app.dart，配置全局路由
-- 编写 journey_page：提问 → 分块 → 节点输入流
-- 后端准备：/chunk 与 /generate_questions 接口（FastAPI）
