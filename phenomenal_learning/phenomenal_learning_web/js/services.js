@@ -153,7 +153,8 @@ class JourneyService {
             console.log('generateInitialNodes - selectedOption:', selectedOption);
             
             // 创建初始exploration节点，每个使用不同的角度
-            const anglesToUse = [selectedOption, ...availableAngles.slice(0, 2)]; // 使用selectedOption + 前2个availableAngles
+            // 生成9个exploration节点
+            const anglesToUse = [selectedOption, ...availableAngles.slice(0, 8)]; // 使用selectedOption + 前8个availableAngles
             
             anglesToUse.forEach((angle, index) => {
                 if (angle) {

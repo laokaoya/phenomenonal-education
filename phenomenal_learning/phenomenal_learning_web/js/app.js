@@ -563,25 +563,7 @@ class PhenomenalLearningApp {
         if (nodeState.history.length > 0) {
             historyDiv.innerHTML = nodeState.history.join('');
         } else {
-            // 获取当前exploration的角度
-            let explorationAngle = '继续探索当前主题';
-            
-            // 从节点内容中提取角度
-            if (node && node.content) {
-                // 如果节点内容以"Q: "开头，提取角度
-                if (node.content.startsWith('Q: ')) {
-                    explorationAngle = node.content.substring(3); // 去掉"Q: "前缀
-                } else {
-                    // 否则使用getNextExplorationAngle作为后备
-                    explorationAngle = getNextExplorationAngle(this.currentJourney);
-                }
-            } else {
-                // 如果节点内容不存在，使用getNextExplorationAngle作为后备
-                explorationAngle = getNextExplorationAngle(this.currentJourney);
-            }
-            
-            console.log('从节点内容获取的角度:', explorationAngle);
-            
+            // 显示加载状态
             historyDiv.innerHTML = `
                 <div class="message ai-message">
                     <div class="message-avatar">
@@ -593,11 +575,14 @@ class PhenomenalLearningApp {
                             <span class="message-time">${new Date().toLocaleTimeString()}</span>
                         </div>
                         <div class="message-text">
-                            <strong>Q:</strong> ${explorationAngle}
+                            <i class="fas fa-spinner fa-spin"></i> 正在准备探索...
                         </div>
                     </div>
                 </div>
             `;
+            
+            // 异步获取Dify的回答
+            this.getInitialDifyResponse(node, historyDiv, nodeState);
         }
         
         // 关闭按钮
@@ -605,9 +590,11 @@ class PhenomenalLearningApp {
             dialog.classList.remove('show');
         };
         
-        // 提问按钮 - 只允许一次提问
+        // 提问按钮 - 根据模式决定是否允许多轮对话
         askBtn.onclick = async () => {
-            if (nodeState.hasAskedQuestion) {
+            const isMultiTurnMode = node.mode === '提问模式' || node.mode === '游戏模式';
+            
+            if (!isMultiTurnMode && nodeState.hasAskedQuestion) {
                 this.showMaterialToast('每个 exploration 只能提问一次。请创建新的 exploration 来继续提问。', 'warning');
                 return;
             }
@@ -695,17 +682,56 @@ class PhenomenalLearningApp {
             nodeState.history.push(aiMessage);
             historyDiv.scrollTop = historyDiv.scrollHeight;
             
-            // 标记已提问，切换到反思界面
-            nodeState.hasAskedQuestion = true;
-            inputSection.style.display = 'none';
-            reflectionSection.style.display = 'block';
-            exploredDiv.style.display = 'flex';
-            statusDiv.innerHTML = '<span class="success-text">✓ 探索完成，可以继续反思</span>';
+            // 根据模式决定后续行为
             
-            // 延迟显示下一个节点
-            setTimeout(() => {
-                this.showNextExploration();
-            }, 2000); // 2秒后显示下一个
+            if (isMultiTurnMode) {
+                // 多轮对话模式：保持输入界面，添加"开启下一轮探索"按钮
+                inputSection.style.display = 'block';
+                reflectionSection.style.display = 'none';
+                exploredDiv.style.display = 'none';
+                
+                // 移除已存在的"开启下一轮探索"按钮
+                const existingNextRoundBtn = document.querySelector('.next-round-btn');
+                if (existingNextRoundBtn) {
+                    existingNextRoundBtn.remove();
+                }
+                
+                // 添加"开启下一轮探索"按钮
+                const nextRoundBtn = document.createElement('button');
+                nextRoundBtn.className = 'btn-material primary next-round-btn';
+                nextRoundBtn.innerHTML = '<i class="fas fa-arrow-right"></i><span>开启下一轮探索</span>';
+                nextRoundBtn.onclick = () => {
+                    // 关闭当前对话窗口
+                    const dialog = document.getElementById('exploration-dialog');
+                    if (dialog) {
+                        dialog.style.display = 'none';
+                    }
+                    
+                    // 显示下一个exploration节点
+                    this.showNextExploration();
+                    
+                    // 显示成功提示
+                    this.showMaterialToast('已开启下一轮探索', 'success');
+                };
+                
+                // 将按钮插入到输入区域
+                const inputActions = document.querySelector('#exploration-dialog-input-section .input-actions');
+                inputActions.appendChild(nextRoundBtn);
+                
+                statusDiv.innerHTML = '<span class="info-text">💬 可以继续对话或开启下一轮探索</span>';
+            } else {
+                // 单轮对话模式：切换到反思界面
+                nodeState.hasAskedQuestion = true;
+                inputSection.style.display = 'none';
+                reflectionSection.style.display = 'block';
+                exploredDiv.style.display = 'flex';
+                statusDiv.innerHTML = '<span class="success-text">✓ 探索完成，可以继续反思</span>';
+                
+                // 延迟显示下一个节点
+                setTimeout(() => {
+                    this.showNextExploration();
+                }, 2000); // 2秒后显示下一个
+            }
         };
         
         // 分享感悟按钮 - 无限制
@@ -1532,6 +1558,70 @@ class PhenomenalLearningApp {
         }
     }
 
+    // 新增：获取初始Dify回答
+    async getInitialDifyResponse(node, historyDiv, nodeState) {
+        try {
+            // 获取当前exploration的角度和模式
+            let angle = '继续探索当前主题';
+            if (node && node.content) {
+                if (node.content.startsWith('Q: ')) {
+                    angle = node.content.substring(3); // 去掉"Q: "前缀
+                }
+            }
+            const mode = node.mode || '解释模式';
+            
+            console.log('调用初始Dify，参数:', { angle, mode, userInput: '1' });
+            
+            // 调用Dify API
+            const answer = await window.callDifyExploration(angle, mode, '1');
+            
+            // 更新历史记录
+            const aiMessage = `
+                <div class="message ai-message">
+                    <div class="message-avatar">
+                        <i class="fas fa-robot"></i>
+                    </div>
+                    <div class="message-content">
+                        <div class="message-header">
+                            <span class="message-author">AI 助手</span>
+                            <span class="message-time">${new Date().toLocaleTimeString()}</span>
+                        </div>
+                        <div class="message-text">
+                            ${answer}
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            historyDiv.innerHTML = aiMessage;
+            nodeState.history.push(aiMessage);
+            
+        } catch (error) {
+            console.error('获取初始Dify回答失败:', error);
+            
+            // 显示错误信息
+            const errorMessage = `
+                <div class="message ai-message">
+                    <div class="message-avatar">
+                        <i class="fas fa-robot"></i>
+                    </div>
+                    <div class="message-content">
+                        <div class="message-header">
+                            <span class="message-author">AI 助手</span>
+                            <span class="message-time">${new Date().toLocaleTimeString()}</span>
+                        </div>
+                        <div class="message-text">
+                            抱歉，暂时无法获取回答。请稍后重试。
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            historyDiv.innerHTML = errorMessage;
+            nodeState.history.push(errorMessage);
+        }
+    }
+
     // 新增：显示下一个 exploration
     showNextExploration() {
         if (this.journeyRenderer) {
@@ -1541,9 +1631,7 @@ class PhenomenalLearningApp {
             // 显示提示消息
             const nextNodeIndex = this.journeyRenderer.getVisibleNodesCount();
             if (nextNodeIndex <= this.currentJourney.getNodes().length) {
-                // 获取下一个exploration的角度作为提示
-                const nextAngle = getNextExplorationAngle(this.currentJourney);
-                this.showMaterialToast(`新的探索已解锁！建议角度：${nextAngle}`, 'success');
+                this.showMaterialToast('新的探索已解锁！', 'success');
             }
         }
     }

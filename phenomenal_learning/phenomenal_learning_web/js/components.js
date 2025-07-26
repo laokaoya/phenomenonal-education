@@ -101,10 +101,14 @@ class ConstellationRenderer {
         // 创建箭头连接
         this.generateArrowConnections();
         
-        // 初始只显示第一个节点
-        this.visibleNodes = 0;
-        if (this.nodes.length > 0) {
+        // 保持当前的可见节点数量，如果还没有节点被显示过，则显示第一个
+        if (this.visibleNodes === 0 && this.nodes.length > 0) {
             this.showNextNode();
+        } else {
+            // 确保所有已显示的节点都保持可见
+            for (let i = 0; i < this.visibleNodes && i < this.nodes.length; i++) {
+                this.nodes[i].visible = true;
+            }
         }
     }
 
