@@ -8,6 +8,7 @@ class PhenomenalLearningApp {
         this.constellationRenderer = null;
         this.journeyRenderer = null;
         this.whiteboard = null;
+        this.currentExploration = null; // 当前选中的exploration
         
         this.init();
     }
@@ -331,13 +332,23 @@ class PhenomenalLearningApp {
             if (Array.isArray(homeOptions) && homeOptions.length > 0) {
                 optionsHtml = `<div class="journey-home-options">${homeOptions.map(opt => `<span class='home-option-badge'>${opt}</span>`).join('')}</div>`;
             }
+            // 获取当前探索的angle
+            let currentExplorationText = this.currentJourney.coreQuestion;
+            if (this.currentExploration && this.currentExploration.content) {
+                if (this.currentExploration.content.startsWith('Q: ')) {
+                    currentExplorationText = this.currentExploration.content.substring(3);
+                } else {
+                    currentExplorationText = this.currentExploration.content;
+                }
+            }
+            
             currentJourneyEl.innerHTML = `
                 <div class="journey-home-header">
                   <div class="home-word-title">${homeWord}</div>
                   ${optionsHtml}
                 </div>
                 <div class="journey-meta">
-                  <span class="meta-label">当前探索：</span>${this.currentJourney.coreQuestion}
+                  <span class="meta-label">当前探索：</span>${currentExplorationText}
                 </div>
             `;
         }
@@ -450,6 +461,10 @@ class PhenomenalLearningApp {
         console.log('showExplorationDialog被调用，node:', node);
         console.log('node.mode:', node?.mode);
         
+        // 更新当前选中的exploration
+        this.currentExploration = node;
+        this.displayCurrentJourney(); // 刷新右上角显示
+        
         // 检查是否已存在弹窗
         let dialog = document.getElementById('exploration-dialog-modal');
         if (!dialog) {
@@ -462,6 +477,16 @@ class PhenomenalLearningApp {
         const mode = node.mode || '探索互动';
         console.log('设置dialog标题为:', mode);
         
+        // 获取exploration的angle
+        let explorationAngle = '继续探索当前主题';
+        if (node && node.content) {
+            if (node.content.startsWith('Q: ')) {
+                explorationAngle = node.content.substring(3); // 去掉"Q: "前缀
+            } else {
+                explorationAngle = node.content;
+            }
+        }
+        
         dialog.innerHTML = `
             <div class="modal-content material-design">
                 <div class="modal-header material-header">
@@ -471,7 +496,7 @@ class PhenomenalLearningApp {
                         </div>
                         <div class="header-text">
                             <h3>${mode}</h3>
-                            <p>与 AI 对话，记录你的思考</p>
+                            <p>${explorationAngle}</p>
                         </div>
                     </div>
                     <button class="modal-close material-close" id="close-exploration-dialog">
