@@ -127,7 +127,22 @@ class LearningNode {
         return data ? new LearningNode(data) : null;
     }
 
-    static getTypeColor(type) {
+    static getTypeColor(type, mode) {
+        console.log('getTypeColor被调用:', { type, mode });
+        
+        // 如果提供了mode参数，根据mode返回颜色
+        if (mode) {
+            const modeColors = {
+                '解释模式': '#3B82F6', // 蓝色
+                '提问模式': '#F59E0B', // 橙色
+                '游戏模式': '#10B981'  // 绿色
+            };
+            const color = modeColors[mode] || modeColors['解释模式'];
+            console.log('使用mode颜色:', color);
+            return color;
+        }
+        
+        // 如果没有mode参数，使用原来的type颜色
         const colors = {
             exploration: '#3B82F6',
             reflection: '#8B5CF6',
@@ -136,7 +151,9 @@ class LearningNode {
             connection: '#EF4444',
             synthesis: '#6366F1'
         };
-        return colors[type] || colors.exploration;
+        const color = colors[type] || colors.exploration;
+        console.log('使用type颜色:', color);
+        return color;
     }
 
     static getTypeIcon(type) {

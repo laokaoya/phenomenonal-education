@@ -79,14 +79,24 @@ class ConstellationRenderer {
             const x = gridX * this.cellSize + this.cellSize / 2;
             const y = gridY * this.cellSize + this.cellSize / 2;
             
+            // 调试信息
+            console.log('创建canvasNode:', {
+                id: node.id,
+                title: node.title,
+                type: node.type,
+                mode: node.mode,
+                color: LearningNode.getTypeColor(node.type, node.mode)
+            });
+            
             const canvasNode = {
                 id: node.id,
                 x: x,
                 y: y,
                 radius: 8 + Math.min(node.content.length / 50, 12),
-                color: LearningNode.getTypeColor(node.type),
+                color: LearningNode.getTypeColor(node.type, node.mode),
                 title: node.title,
                 type: node.type,
+                mode: node.mode,
                 data: node,
                 pulse: false,
                 index: index,
@@ -270,7 +280,9 @@ class ConstellationRenderer {
                     this.ctx.fillStyle = '#ffffff';
                     this.ctx.font = '12px Arial';
                     this.ctx.textAlign = 'center';
-                    this.ctx.fillText(node.title, x, y - radius - 15);
+                    // 显示标题和模式
+                    const displayText = node.mode ? `${node.title} (${node.mode})` : node.title;
+                    this.ctx.fillText(displayText, x, y - radius - 15);
                 }
             }
         });

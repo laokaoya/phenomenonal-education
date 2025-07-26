@@ -276,6 +276,22 @@
     margin-top: var(--spacing-xs);
 }
 
+/* 模式特定的徽章样式 */
+.node-type-badge.mode-解释模式 {
+    background: #3B82F6;
+    color: white;
+}
+
+.node-type-badge.mode-提问模式 {
+    background: #F59E0B;
+    color: white;
+}
+
+.node-type-badge.mode-游戏模式 {
+    background: #10B981;
+    color: white;
+}
+
 /* Session Cards */
 .session-card {
     background: white;

@@ -181,8 +181,69 @@ class PhenomenalLearningApp {
         
         // If there's a current journey, display it
         if (this.currentJourney) {
+            // 为现有节点添加mode属性（如果缺失）
+            this.addModeToExistingNodes(this.currentJourney);
+            
             this.journeyRenderer.setJourney(this.currentJourney);
             this.displayCurrentJourney();
+        }
+    }
+    
+    // 为现有节点添加mode属性
+    addModeToExistingNodes(journey) {
+        const nodes = journey.getNodes();
+        let hasChanges = false;
+        
+        nodes.forEach(node => {
+            if (!node.mode) {
+                // 随机分配模式
+                const modes = ['解释模式', '提问模式', '游戏模式'];
+                const randomMode = modes[Math.floor(Math.random() * modes.length)];
+                node.mode = randomMode;
+                node.save();
+                hasChanges = true;
+                console.log(`为节点 ${node.title} 添加模式: ${randomMode}`);
+            }
+        });
+        
+        if (hasChanges) {
+            journey.save();
+            console.log('已为现有节点添加模式属性');
+        }
+        
+        // 强制重新渲染
+        if (this.journeyRenderer) {
+            this.journeyRenderer.setJourney(journey);
+        }
+    }
+    
+    // 调试函数：检查当前journey的节点状态
+    debugCurrentJourney() {
+        if (!this.currentJourney) {
+            console.log('没有当前journey');
+            return;
+        }
+        
+        const nodes = this.currentJourney.getNodes();
+        console.log(`当前journey: ${this.currentJourney.title}`);
+        console.log(`节点数量: ${nodes.length}`);
+        
+        nodes.forEach((node, index) => {
+            const color = LearningNode.getTypeColor(node.type, node.mode);
+            console.log(`节点 ${index + 1}: ${node.title}`);
+            console.log(`  - 类型: ${node.type}`);
+            console.log(`  - 模式: ${node.mode || '无'}`);
+            console.log(`  - 颜色: ${color}`);
+        });
+        
+        // 检查渲染器状态
+        if (this.journeyRenderer) {
+            console.log('渲染器节点状态:');
+            this.journeyRenderer.nodes.forEach((canvasNode, index) => {
+                console.log(`Canvas节点 ${index + 1}: ${canvasNode.title}`);
+                console.log(`  - 颜色: ${canvasNode.color}`);
+                console.log(`  - 模式: ${canvasNode.mode || '无'}`);
+            });
         }
     }
 
@@ -301,6 +362,8 @@ class PhenomenalLearningApp {
         // Update current journey display
         if (journeys.length > 0 && !this.currentJourney) {
             this.currentJourney = journeys[0];
+            // 为现有节点添加mode属性（如果缺失）
+            this.addModeToExistingNodes(this.currentJourney);
         }
         
         // Update journey sidebar
@@ -367,10 +430,18 @@ class PhenomenalLearningApp {
                     const card = document.createElement('div');
                     card.className = 'node-card';
                     if (i === 0) card.classList.add('highlight');
+                    // 根据模式设置徽章颜色和文本
+                    let badgeClass = 'node-type-badge';
+                    let badgeText = 'start';
+                    if (node.mode) {
+                        badgeClass += ` mode-${node.mode.replace(/\s+/g, '-').toLowerCase()}`;
+                        badgeText = node.mode;
+                    }
+                    
                     card.innerHTML = `
                         <h5>${node.title}</h5>
                         <p>${node.content.substring(0, 100)}${node.content.length > 100 ? '...' : ''}</p>
-                        <span class="node-type-badge">start</span>
+                        <span class="${badgeClass}">${badgeText}</span>
                         <div class="node-index">${i + 1}</div>
                     `;
                     card.addEventListener('click', () => {
@@ -426,12 +497,17 @@ class PhenomenalLearningApp {
         window.callDifyWorkflow(question).then(answer => {
             difyAnswer = answer;
             
+            // 随机选择模式
+            const modes = ['解释模式', '提问模式', '游戏模式'];
+            const randomMode = modes[Math.floor(Math.random() * modes.length)];
+            
             // 创建新的 exploration 节点
             const node = new LearningNode({
                 journeyId: this.currentJourney.id,
                 title: `探索 ${this.currentJourney.getNodes().length + 1}`,
                 content: `Q: ${question}\nA: ${difyAnswer}`,
                 type: 'exploration',
+                mode: randomMode,
                 position: {
                     x: 100 + Math.random() * 400,
                     y: 100 + Math.random() * 300
@@ -1511,11 +1587,16 @@ class PhenomenalLearningApp {
             return;
         }
         
+        // 随机选择模式
+        const modes = ['解释模式', '提问模式', '游戏模式'];
+        const randomMode = modes[Math.floor(Math.random() * modes.length)];
+        
         const node = new LearningNode({
             journeyId: this.currentJourney.id,
             title,
             content,
             type: 'exploration',
+            mode: randomMode,
             position: {
                 x: 100 + Math.random() * 400,
                 y: 100 + Math.random() * 300
@@ -2531,7 +2612,10 @@ function recordUsedAngle(journey, angle) {
             journey.metadata.usedAngles.push(angle);
             console.log('记录已使用的角度:', angle);
             console.log('已使用的角度列表:', journey.metadata.usedAngles);
-            journey.save();
-        }
+                    journey.save();
     }
+}
+
+// 暴露调试函数到全局
+window.debugJourney = () => app.debugCurrentJourney();
 }
